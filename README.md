@@ -1,8 +1,8 @@
 # Optimum Inventory Tracking and Sales Processing System
 
-Work in progress: stage 3 of 6.
+Work in progress: stage 4 of 6.
 
-**Included so far:** Sales cart with drafts and payments, Finalize Sale, Returns & Voids, and the full Dashboard.
+**Included so far:** Invoice and Delivery Receipt screens, unique serial numbers, Reprint, and the print page.
 
 ## Run it
 

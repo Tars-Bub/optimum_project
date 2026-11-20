@@ -8,6 +8,7 @@ from sales.models import Order, OrderItem
 from sales.services import finalize_order, process_return, void_order
 from stock.models import StockMovement
 from stock.services import StockError, apply_movement, set_quantity
+from documents.models import Document
 
 User = get_user_model()
 
@@ -161,10 +162,26 @@ class SalesFlowTests(SalesBase):
         self.assertEqual(self.p1.quantity, 8)
 
 
+class DocumentTests(SalesBase):
+    def test_serial_number_required_and_unique(self):
+        order = finalize_order(self.cart(p1=1), self.staff)
+        other = finalize_order(self.cart(p2=1), self.staff)
+        self.client.login(username='staff', password='pass12345!x')
+        url = reverse('documents:print_doc')
+        resp = self.client.post(url, {'order': order.pk, 'doc_type': 'invoice', 'number': ''})
+        self.assertContains(resp, 'Required')
+        resp = self.client.post(url, {'order': order.pk, 'doc_type': 'invoice', 'number': 'INV-100'})
+        self.assertEqual(resp.status_code, 302)
+        resp = self.client.post(url, {'order': other.pk, 'doc_type': 'invoice', 'number': 'inv-100'})
+        self.assertContains(resp, 'Duplicate')
+        self.assertEqual(Document.objects.count(), 1)
+
+
 class SmokeTests(SalesBase):
     """Every screen built so far opens for the Admin."""
     def test_pages_render(self):
         order = finalize_order(self.cart(p1=2), self.staff)
+        doc = Document.objects.create(doc_type='invoice', number='INV-1', order=order, printed_by=self.staff)
         self.client.login(username='admin', password='pass12345!x')
         urls = [
             '/',
@@ -184,6 +201,11 @@ class SmokeTests(SalesBase):
             '/sales/returns/',
             f'/sales/returns/?tab=return&order={order.pk}',
             f'/sales/returns/?tab=void&order={order.pk}',
+            '/documents/',
+            f'/documents/?tab=invoice&order={order.pk}',
+            f'/documents/?tab=delivery&order={order.pk}',
+            '/documents/?tab=reprint',
+            f'/documents/{doc.pk}/view/',
         ]
         for url in urls:
             with self.subTest(url=url):

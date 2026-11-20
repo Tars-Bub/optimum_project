@@ -1,0 +1,37 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Documents · Optimum{% endblock %}
+{% block content %}
+<h1>Documents</h1>
+<div class="tabs"><a class="tab {% if tab == 'invoice' %}active{% endif %}" href="?tab=invoice">Invoice</a><a class="tab {% if tab == 'delivery' %}active{% endif %}" href="?tab=delivery">Delivery Receipt</a><a class="tab {% if tab == 'reprint' %}active{% endif %}" href="?tab=reprint">Reprint</a></div>
+
+{% if tab == 'reprint' %}
+<div class="card"><form class="filters" method="get"><input type="hidden" name="tab" value="reprint"><input name="q" value="{{ q }}" placeholder="Doc number or client"><button class="btn btn-outline">Search</button></form>
+<table><tr><th>Type</th><th>Doc number</th><th>Order</th><th>Client</th><th>Printed</th><th class="num">Reprints</th><th></th></tr>
+{% for d in docs %}<tr><td>{{ d.get_doc_type_display }}</td><td>{{ d.number }}</td><td>{{ d.order.number }}</td><td>{{ d.order.client_label }}</td><td>{{ d.printed_at|date:"M d, H:i" }}</td><td class="num">{{ d.reprint_count }}</td>
+<td><form method="post" action="{% url 'documents:reprint' d.pk %}">{% csrf_token %}<button class="btn btn-sm">Reprint</button></form></td></tr>
+{% empty %}<tr><td colspan="7" class="muted">No printed documents yet.</td></tr>{% endfor %}</table></div>
+
+{% else %}
+<div class="row">
+<div class="grow">
+<form class="filters" method="get"><input type="hidden" name="tab" value="{{ tab }}"><select name="order" onchange="this.form.submit()" style="min-width:320px"><option value="">Choose a finalized order...</option>
+{% for o in orders %}<option value="{{ o.pk }}" {% if order and order.pk == o.pk %}selected{% endif %}>{{ o.number }} · {{ o.client_label }}</option>{% endfor %}</select><noscript><button class="btn btn-outline">Open</button></noscript></form>
+<div class="preform"><p class="muted" style="margin-top:0">Pre-printed form area (not printed)</p>
+{% if order %}
+<div style="display:flex;justify-content:space-between;gap:12px"><div class="slot">{{ order.client_name|default:order.client_business }}{% if order.client_tin %} / TIN {{ order.client_tin }}{% endif %}{% if order.client_address %} / {{ order.client_address }}{% endif %}</div><div class="slot">{{ order.finalized_at|date:"M d, Y" }}{% if order.po_number %} / P.O. {{ order.po_number }}{% endif %}</div></div>
+<div class="slot" style="margin:14px 0;min-height:160px"><table>{% for it in order.items.all %}<tr><td>{{ it.product.name }}</td><td class="num">{{ it.quantity }}</td>{% if tab == 'invoice' %}<td class="num">{{ it.unit_price|peso }}</td><td class="num">{{ it.line_total|peso }}</td>{% endif %}</tr>{% endfor %}</table></div>
+{% if tab == 'invoice' %}<div style="display:flex;justify-content:flex-end"><div class="slot">Total {{ order.total|peso }}</div></div>{% endif %}
+{% else %}<p class="muted">Choose an order to preview the document.</p>{% endif %}
+</div></div>
+
+<div class="card" style="width:340px"><h2>Print</h2>
+{% if order %}
+<form method="post" action="{% url 'documents:print_doc' %}">{% csrf_token %}<input type="hidden" name="order" value="{{ order.pk }}"><input type="hidden" name="doc_type" value="{{ tab }}">
+<label>Doc number (serial)</label><input name="number" value="{{ number }}" autocomplete="off">
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+{% if existing %}<div class="help">Already printed as {{ existing.number }}. Use the Reprint tab.</div>{% endif %}
+<p><button class="btn" style="width:100%">Print</button></p></form>
+{% else %}<p class="muted">Select an order first.</p>{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

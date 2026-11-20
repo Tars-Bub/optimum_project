@@ -1,0 +1,26 @@
+{% load ui %}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>{{ doc }} · {{ order.number }}</title>
+<style>
+/* Tune these millimetre positions once against your actual pre-printed form. */
+:root{--client-x:20mm;--client-y:48mm;--date-x:140mm;--date-y:48mm;--items-x:15mm;--items-y:70mm;--row-h:7mm;--total-x:150mm;--total-y:190mm}
+@page{size:A5 landscape;margin:0}
+body{margin:0;font-family:Arial,sans-serif;font-size:11pt;color:#000}
+.page{position:relative;width:210mm;height:148mm}
+.f{position:absolute;white-space:nowrap}
+.guide .page{outline:1px dotted #999}
+.bar{padding:10px;background:#eef2f5;font-family:Arial;font-size:14px}
+.bar button,.bar a{margin-right:8px}
+@media print{.bar{display:none}.guide .page{outline:none}}
+</style></head>
+<body class="guide">
+<div class="bar">Only the data below prints onto the pre-printed form (the dotted outline is an alignment guide).
+<button onclick="window.print()">Print</button><a href="{% url 'documents:index' %}?tab=reprint">Back to documents</a></div>
+<div class="page">
+<div class="f" style="left:var(--client-x);top:var(--client-y)">{{ order.client_name }}{% if order.client_business %}{% if order.client_name %}, {% endif %}{{ order.client_business }}{% endif %}{% if order.client_tin %} · TIN {{ order.client_tin }}{% endif %}<br>{{ order.client_address }}</div>
+<div class="f" style="left:var(--date-x);top:var(--date-y)">{{ order.finalized_at|date:"M d, Y" }}{% if order.po_number %}<br>P.O. {{ order.po_number }}{% endif %}</div>
+{% for it in items %}<div class="f" style="left:var(--items-x);top:calc(var(--items-y) + {{ forloop.counter0 }} * var(--row-h))">{{ it.quantity }} &nbsp; {{ it.product.name }}</div>
+{% if doc.doc_type == 'invoice' %}<div class="f" style="left:120mm;top:calc(var(--items-y) + {{ forloop.counter0 }} * var(--row-h))">{{ it.unit_price|peso }}</div><div class="f" style="left:160mm;top:calc(var(--items-y) + {{ forloop.counter0 }} * var(--row-h))">{{ it.line_total|peso }}</div>{% endif %}{% endfor %}
+{% if doc.doc_type == 'invoice' %}<div class="f" style="left:160mm;top:128mm"><strong>{{ order.total|peso }}</strong></div>{% endif %}
+</div>
+{% if auto_print %}<script>window.addEventListener('load',function(){window.print();});</script>{% endif %}
+</body></html>
