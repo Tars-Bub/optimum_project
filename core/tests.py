@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from catalog.models import Category, Product
+from stock.services import StockError, apply_movement, set_quantity
 
 User = get_user_model()
 
@@ -37,9 +39,45 @@ class AccountTests(TestCase):
         self.assertIn('/accounts/login/', resp['Location'])
 
 
+class ProductAndStockTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('u', password='pass12345!x')
+        cat = Category.objects.create(name='Paper')
+        self.p = Product.objects.create(code='P-1', name='Copy Paper', category=cat,
+                                        unit_cost=Decimal('10'), price=Decimal('20'), reorder_level=5)
+
+    def test_status_follows_quantity_and_reorder_level(self):
+        self.p.quantity = 0
+        self.assertEqual(self.p.status, 'depleted')
+        self.p.quantity = 5
+        self.assertEqual(self.p.status, 'low')
+        self.p.quantity = 6
+        self.assertEqual(self.p.status, 'in')
+
+    def test_incoming_stock_updates_quantity_and_history(self):
+        move = apply_movement(self.p, 10, 'incoming', self.user, reference='DR-1')
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.quantity, 10)
+        self.assertEqual((move.change, move.balance_after), (10, 10))
+
+    def test_quantity_can_never_go_negative(self):
+        apply_movement(self.p, 3, 'incoming', self.user)
+        with self.assertRaises(StockError):
+            apply_movement(self.p, -4, 'sale', self.user)
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.quantity, 3)
+
+    def test_adjustment_from_a_physical_count(self):
+        apply_movement(self.p, 10, 'incoming', self.user)
+        move = set_quantity(self.p, 7, self.user, note='Recount')
+        self.p.refresh_from_db()
+        self.assertEqual((self.p.quantity, move.change), (7, -3))
+
+
 class SmokeTests(AccountTests):
     """Every screen built so far opens for the Admin."""
     def test_pages_render(self):
+        Category.objects.create(name='Paper')
         self.client.login(username='admin', password='pass12345!x')
         urls = [
             '/',
@@ -47,6 +85,13 @@ class SmokeTests(AccountTests):
             '/accounts/staff/',
             '/accounts/staff/?tab=pending',
             '/accounts/staff/add/',
+            '/catalog/',
+            '/catalog/?tab=categories',
+            '/stock/',
+            '/stock/?tab=incoming',
+            '/stock/?tab=adjust',
+            '/stock/?tab=movements',
+            '/stock/?tab=alerts',
         ]
         for url in urls:
             with self.subTest(url=url):

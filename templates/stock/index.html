@@ -1,0 +1,48 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Stock · Optimum{% endblock %}
+{% block content %}
+<h1>Stock</h1>
+<div class="tabs">
+<a class="tab {% if tab == 'levels' %}active{% endif %}" href="?tab=levels">Levels</a>
+<a class="tab {% if tab == 'incoming' %}active{% endif %}" href="?tab=incoming">Incoming</a>
+<a class="tab {% if tab == 'adjust' %}active{% endif %}" href="?tab=adjust">Adjust</a>
+<a class="tab {% if tab == 'movements' %}active{% endif %}" href="?tab=movements">Movements</a>
+<a class="tab {% if tab == 'alerts' %}active{% endif %}" href="?tab=alerts">Alerts{% if alert_count %}<span class="count">{{ alert_count }}</span>{% endif %}</a>
+</div>
+
+{% if tab == 'levels' %}
+<div class="card">
+<form class="filters" method="get"><input type="hidden" name="tab" value="levels"><input name="q" value="{{ q }}" placeholder="Search item">
+<select name="category"><option value="">All categories</option>{% for c in all_categories %}<option value="{{ c.pk }}" {% if cat == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select><button class="btn btn-outline">Filter</button></form>
+<table><tr><th>Item</th><th>Category</th><th>Stock vs reorder level</th><th class="num">Qty</th><th class="num">Reorder at</th><th>Status</th></tr>
+{% for p in items %}<tr><td>{{ p.name }} <span class="muted">{{ p.code }}</span></td><td>{{ p.category.name }}</td>
+<td><div class="bar"><i class="{{ p.status }}" style="width:{{ p.stock_percent }}%"></i></div></td>
+<td class="num">{{ p.quantity }}</td><td class="num">{{ p.reorder_level }}</td><td><span class="badge {{ p.status }}">{{ p.status_label }}</span></td></tr>
+{% empty %}<tr><td colspan="6" class="muted">No items found.</td></tr>{% endfor %}</table></div>
+
+{% elif tab == 'incoming' %}
+<div class="card" style="max-width:520px"><h2>Record incoming stock</h2>
+<form method="post">{% csrf_token %}<input type="hidden" name="form" value="incoming">
+{% for field in incoming_form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="err">{{ e }}</div>{% endfor %}{% endfor %}
+<p><button class="btn">Add to stock</button></p></form></div>
+
+{% elif tab == 'adjust' %}
+<div class="card" style="max-width:520px"><h2>Adjust from a physical count</h2>
+<form method="post">{% csrf_token %}<input type="hidden" name="form" value="adjust">
+{% for field in adjust_form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="err">{{ e }}</div>{% endfor %}{% endfor %}
+<p><button class="btn">Save adjustment</button></p></form></div>
+
+{% elif tab == 'movements' %}
+<div class="card">
+<form class="filters" method="get"><input type="hidden" name="tab" value="movements"><input name="q" value="{{ q }}" placeholder="Search item or reference"><button class="btn btn-outline">Search</button></form>
+<table><tr><th>When</th><th>Item</th><th>Type</th><th class="num">Change</th><th class="num">Balance</th><th>Reference</th><th>By</th></tr>
+{% for m in moves %}<tr><td>{{ m.created_at|date:"M d, H:i" }}</td><td>{{ m.product.name }}</td><td>{{ m.get_kind_display }}</td><td class="num">{{ m.change|stringformat:"+d" }}</td><td class="num">{{ m.balance_after }}</td><td>{{ m.reference }}{% if m.note %} <span class="muted">{{ m.note }}</span>{% endif %}</td><td>{{ m.user.username }}</td></tr>
+{% empty %}<tr><td colspan="7" class="muted">No movements yet.</td></tr>{% endfor %}</table></div>
+
+{% else %}
+<div class="card"><h2>Low and depleted items</h2>
+<table><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th class="num">Reorder at</th><th>Status</th></tr>
+{% for p in alerts %}<tr><td>{{ p.name }} <span class="muted">{{ p.code }}</span></td><td>{{ p.category.name }}</td><td class="num">{{ p.quantity }}</td><td class="num">{{ p.reorder_level }}</td><td><span class="badge {{ p.status }}">{{ p.status_label }}</span></td></tr>
+{% empty %}<tr><td colspan="5" class="muted">All items are above their reorder level.</td></tr>{% endfor %}</table></div>
+{% endif %}
+{% endblock %}

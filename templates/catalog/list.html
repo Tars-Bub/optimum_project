@@ -1,0 +1,26 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Categories & Products · Optimum{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center"><h1>Categories &amp; Products</h1>
+<a class="btn" href="{% url 'catalog:product_add' %}">Add product</a></div>
+<div class="tabs"><a class="tab {% if tab != 'categories' %}active{% endif %}" href="?tab=products">Products</a><a class="tab {% if tab == 'categories' %}active{% endif %}" href="?tab=categories">Categories</a></div>
+{% if tab == 'categories' %}
+<div class="row"><div class="card grow">
+<form class="filters" method="get"><input type="hidden" name="tab" value="categories"><input name="q" value="{{ q }}" placeholder="Search categories"><button class="btn btn-outline">Search</button></form>
+<table><tr><th>Category</th><th>Products</th><th>Actions</th></tr>
+{% for c in categories %}<tr><td>{{ c.name }}</td><td>{{ c.n }}</td><td><a href="{% url 'catalog:category_edit' c.pk %}">Edit</a> |
+<form class="inline" method="post" action="{% url 'catalog:category_delete' c.pk %}" onsubmit="return confirm('Delete this category?')">{% csrf_token %}<button class="link">Delete</button></form></td></tr>
+{% empty %}<tr><td colspan="3" class="muted">No categories yet.</td></tr>{% endfor %}</table></div>
+<div class="card" style="width:300px"><h2>New category</h2><form method="post" action="{% url 'catalog:category_add' %}">{% csrf_token %}<label>Name</label><input name="name" required><p><button class="btn">Add category</button></p></form></div></div>
+{% else %}
+<div class="card">
+<form class="filters" method="get"><input type="hidden" name="tab" value="products"><input name="q" value="{{ q }}" placeholder="Search name or code">
+<select name="category"><option value="">All categories</option>{% for c in all_categories %}<option value="{{ c.pk }}" {% if cat == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select><button class="btn btn-outline">Filter</button></form>
+<table><tr><th>Item code</th><th>Name</th><th>Category</th><th class="num">Unit cost</th><th class="num">Price</th><th class="num">Stock</th><th>Status</th><th>Actions</th></tr>
+{% for p in items %}<tr><td>{{ p.code }}</td><td>{{ p.name }}</td><td>{{ p.category.name }}</td><td class="num">{{ p.unit_cost|peso }}</td><td class="num">{{ p.price|peso }}</td><td class="num">{{ p.quantity }}</td>
+<td><span class="badge {{ p.status }}">{{ p.status_label }}</span></td>
+<td><a href="{% url 'catalog:product_edit' p.pk %}">Edit</a> |
+<form class="inline" method="post" action="{% url 'catalog:product_delete' p.pk %}" onsubmit="return confirm('Delete this product?')">{% csrf_token %}<button class="link">Delete</button></form></td></tr>
+{% empty %}<tr><td colspan="8" class="muted">No products found.</td></tr>{% endfor %}</table></div>
+{% endif %}
+{% endblock %}

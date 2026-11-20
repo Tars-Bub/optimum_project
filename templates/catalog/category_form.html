@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block title %}Edit category · Optimum{% endblock %}
+{% block content %}
+<h1>Edit category</h1>
+<div class="card" style="max-width:420px"><form method="post">{% csrf_token %}
+{% for field in form %}<label>{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="err">{{ e }}</div>{% endfor %}{% endfor %}
+<p><button class="btn">Save</button> <a class="btn btn-outline" href="/catalog/?tab=categories">Cancel</a></p></form></div>
+{% endblock %}

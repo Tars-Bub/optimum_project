@@ -7,7 +7,7 @@
 <nav>{% for item in nav_items %}<a href="{{ item.url }}" class="{% if item.active %}active{% endif %}">{{ item.label }}{% if item.badge %}<span class="count">{{ item.badge }}</span>{% endif %}</a>{% endfor %}</nav></aside>
 <div class="main">
 <header class="topbar">
-<div class="search"><input type="search" placeholder="Search products..." disabled></div>
+<form class="search" action="{% url 'catalog:products' %}" method="get"><input type="hidden" name="tab" value="products"><input type="search" name="q" placeholder="Search products..."></form>
 <div class="user"><span>{{ user_name }}</span><div class="avatar">{{ user_initials }}</div>
 <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn btn-outline btn-sm">Log out</button></form></div>
 </header>
