@@ -1,9 +1,0 @@
-{% extends 'web/base.html' %}
-{% block content %}<h1>Sales</h1>
-<div class="tabs"><a class="tab {% if tab != 'drafts' %}active{% endif %}" href="?tab=new">New Sale</a><a class="tab {% if tab == 'drafts' %}active{% endif %}" href="?tab=drafts">Drafts</a></div>
-{% if tab == 'drafts' %}<div class="card"><table><tr><th>Order no.</th><th>Client</th><th class="num">Total</th><th>Actions</th></tr><tr><td>SO-0004</td><td>Client name</td><td class="num">₱0,000</td><td>Resume | Delete</td></tr></table></div>
-{% else %}<div class="row"><div class="card grow"><input placeholder="Search item"><div class="tiles">{% for p in products %}<button class="tile"><strong>{{ p.name }}</strong><span>₱{{ p.price }}</span><span class="muted">{{ p.qty }} in stock</span></button>{% endfor %}</div></div>
-<div class="card cart"><h2>Cart</h2><label>Client (name, business, TIN, address)</label><input><label>P.O. number | Payment terms</label><input>
-<div class="line"><div class="name">Item name</div><div class="qty"><button>-</button><strong>1</strong><button>+</button></div><div>₱000</div></div>
-<div class="line"><div class="name">Item name</div><div class="qty"><button>-</button><strong>2</strong><button>+</button></div><div>₱000</div></div>
-<div class="total"><span>Total</span><span>₱0,000</span></div><div class="actions"><button class="btn btn-outline">Save as Draft</button><button class="btn btn-outline">Record Payment</button><button class="btn">Finalize Sale</button></div></div></div>{% endif %}{% endblock %}

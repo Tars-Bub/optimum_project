@@ -1,5 +1,0 @@
-{% extends 'web/base.html' %}
-{% block content %}<h1>Returns &amp; Voids</h1>
-<div class="tabs"><a class="tab {% if tab != 'void' %}active{% endif %}" href="?tab=return">Return / Exchange</a><a class="tab {% if tab == 'void' %}active{% endif %}" href="?tab=void">Void</a></div>
-<div class="row"><div class="card grow"><h2>1. Find order</h2><input placeholder="Order no. / client / P.O."><p>SO-0001 &nbsp; Client name &nbsp; ₱0,000</p><h2>2. {% if tab == 'void' %}Order{% else %}Items{% endif %}</h2><table><tr><th>Item name</th><th class="num">Qty 1 of 2</th></tr></table></div>
-<div class="card" style="width:380px"><h2>3. Details</h2>{% if tab == 'void' %}<label>Reason</label><input><p><button class="btn btn-danger">Confirm void</button></p>{% else %}<div class="actions"><label><input type="radio" checked> Return</label><label><input type="radio"> Exchange</label></div><label>Reason</label><input><div class="slot" style="margin:12px 0">Refund amount or replacement item</div><button class="btn">Confirm</button>{% endif %}</div></div>{% endblock %}

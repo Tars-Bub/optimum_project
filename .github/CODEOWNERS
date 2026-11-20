@@ -1,0 +1,10 @@
+# Replace the placeholders with real GitHub usernames, then turn on "Require review from Code Owners".
+/templates/ @ui-owner
+/static/ @ui-owner
+/accounts/ @backend-owner-1
+/catalog/ @backend-owner-1
+/stock/ @backend-owner-1
+/sales/ @backend-owner-2
+/documents/ @backend-owner-2
+/reports/ @qa-owner
+/docs/ @qa-owner

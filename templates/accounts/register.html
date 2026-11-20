@@ -1,0 +1,11 @@
+{% extends 'auth_base.html' %}
+{% block title %}Register · Optimum{% endblock %}
+{% block content %}
+<h1>Register Staff Account</h1>
+<p class="muted" style="text-align:center">Your account will be active after the Admin / Owner approves it.</p>
+<form method="post">{% csrf_token %}
+{% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="err">{{ e }}</div>{% endfor %}{% endfor %}
+<p><button class="btn" style="width:100%">Send registration</button></p>
+</form>
+<p class="muted" style="text-align:center"><a href="{% url 'accounts:login' %}">Back to log in</a></p>
+{% endblock %}

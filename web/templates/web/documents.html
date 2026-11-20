@@ -1,7 +1,0 @@
-{% extends 'web/base.html' %}
-{% block content %}<h1>Documents</h1>
-<div class="tabs"><a class="tab {% if tab == 'invoice' %}active{% endif %}" href="?tab=invoice">Invoice</a><a class="tab {% if tab == 'delivery' %}active{% endif %}" href="?tab=delivery">Delivery Receipt</a><a class="tab {% if tab == 'reprint' %}active{% endif %}" href="?tab=reprint">Reprint</a></div>
-{% if tab == 'reprint' %}<div class="card"><input placeholder="Doc number or client" style="max-width:300px"><table><tr><th>Type</th><th>Doc number</th><th>Order</th><th></th></tr><tr><td>Invoice</td><td>INV-0001</td><td>SO-0001</td><td><button class="btn btn-sm">Reprint</button></td></tr></table></div>
-{% else %}<div class="row"><div class="grow"><div class="preform"><p class="muted" style="margin-top:0">Pre-printed form area (not printed)</p>
-<div style="display:flex;justify-content:space-between"><div class="slot">Client / TIN / Address</div><div class="slot">Date / P.O. no.</div></div><div class="slot" style="margin:14px 0;min-height:200px;display:grid;place-items:center">Items, qty, unit price, amount</div><div style="display:flex;justify-content:flex-end"><div class="slot">Total</div></div></div></div>
-<div class="card" style="width:340px"><h2>Print</h2><label>Doc number (serial)</label><input><div class="err">Error: required / duplicate</div><p><button class="btn" style="width:100%">Print</button></p></div></div>{% endif %}{% endblock %}

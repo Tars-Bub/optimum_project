@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} · Optimum{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<div class="card" style="max-width:520px"><form method="post">{% csrf_token %}
+{% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="err">{{ e }}</div>{% endfor %}{% endfor %}
+<p><button class="btn">Save</button> <a class="btn btn-outline" href="{% url 'accounts:staff' %}">Cancel</a></p></form></div>
+{% endblock %}

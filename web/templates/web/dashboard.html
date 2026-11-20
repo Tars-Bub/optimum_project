@@ -1,6 +1,0 @@
-{% extends 'web/base.html' %}
-{% block content %}<h1>Dashboard</h1>
-<div class="actions"><a class="btn" href="{% url 'sales' %}">New Sale</a><a class="btn btn-outline" href="{% url 'stock' %}?tab=incoming">Record Incoming Stock</a></div>
-<div class="cards"><div class="card stat"><small>Today's sales</small><strong>₱0,000</strong></div><div class="card stat"><small>Low-stock items</small><strong>00</strong></div><div class="card stat"><small>Depleted items</small><strong>00</strong></div><div class="card stat"><small>Total items</small><strong>000</strong></div></div>
-<div class="card"><h2>Recent orders</h2><table><tr><th>Order no.</th><th>Client</th><th class="num">Total</th><th>Payment</th></tr>
-{% for o in orders %}<tr><td>{{ o.no }}</td><td>{{ o.client }}</td><td class="num">₱{{ o.total }}</td><td><span class="badge {{ o.payment|lower }}">{{ o.payment }}</span></td></tr>{% endfor %}</table></div>{% endblock %}
