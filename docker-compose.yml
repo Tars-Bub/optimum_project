@@ -1,0 +1,25 @@
+# Local stack with MySQL (the same database the cloud plan uses).
+services:
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_DATABASE: optimum
+      MYSQL_USER: optimum
+      MYSQL_PASSWORD: optimum
+      MYSQL_ROOT_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      retries: 20
+  web:
+    build: .
+    ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_NAME: optimum
+      DB_USER: optimum
+      DB_PASSWORD: optimum
+      DB_HOST: db
+      DJANGO_DEBUG: "1"
