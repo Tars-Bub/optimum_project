@@ -1,8 +1,8 @@
 # Optimum Inventory Tracking and Sales Processing System
 
-Work in progress: stage 2 of 6.
+Work in progress: stage 3 of 6.
 
-**Included so far:** Categories and Products screens and the Stock screen (Levels, Incoming, Adjust, Movements, Alerts). Adds the demo data command.
+**Included so far:** Sales cart with drafts and payments, Finalize Sale, Returns & Voids, and the full Dashboard.
 
 ## Run it
 

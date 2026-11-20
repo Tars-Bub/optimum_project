@@ -1,0 +1,43 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Sales · Optimum{% endblock %}
+{% block content %}
+<h1>Sales</h1>
+<div class="tabs"><a class="tab {% if tab != 'drafts' %}active{% endif %}" href="?tab=new">New Sale</a><a class="tab {% if tab == 'drafts' %}active{% endif %}" href="?tab=drafts">Drafts</a></div>
+
+{% if tab == 'drafts' %}
+<div class="card"><table><tr><th>Order no.</th><th>Client</th><th>Items</th><th class="num">Total</th><th>Started</th><th>Actions</th></tr>
+{% for d in drafts %}<tr><td>{{ d.number }}</td><td>{{ d.client_label }}</td><td>{{ d.n }}</td><td class="num">{{ d.total|peso }}</td><td>{{ d.created_at|date:"M d, H:i" }}</td>
+<td><a href="?resume={{ d.pk }}">Resume</a> |
+<form class="inline" method="post" action="{% url 'sales:draft_delete' d.pk %}" onsubmit="return confirm('Delete this draft?')">{% csrf_token %}<button class="link">Delete</button></form></td></tr>
+{% empty %}<tr><td colspan="6" class="muted">No drafts.</td></tr>{% endfor %}</table></div>
+
+{% else %}
+<div class="row">
+<div class="card grow">
+<form method="get"><input type="hidden" name="tab" value="new"><input name="q" value="{{ q }}" placeholder="Search item"></form>
+<div class="tiles">
+{% for p in products %}<form method="post" action="{% url 'sales:cart_add' p.pk %}">{% csrf_token %}
+<button class="tile" {% if p.quantity <= 0 %}disabled{% endif %}><strong>{{ p.name }}</strong><span>{{ p.price|peso }}</span><span class="muted">{{ p.quantity }} in stock</span></button></form>
+{% empty %}<p class="muted">No items found.</p>{% endfor %}
+</div></div>
+
+<div class="card cart"><h2>Cart {% if cart %}<span class="muted">{{ cart.number }}</span>{% endif %}</h2>
+{% if cart and cart_items %}
+{% for it in cart_items %}<div class="line"><div class="name">{{ it.product.name }}<div class="muted">{{ it.unit_price|peso }}</div></div>
+<div class="qty"><form method="post" action="{% url 'sales:cart_update' it.pk 'dec' %}">{% csrf_token %}<button>-</button></form><strong>{{ it.quantity }}</strong><form method="post" action="{% url 'sales:cart_update' it.pk 'inc' %}">{% csrf_token %}<button>+</button></form></div>
+<div>{{ it.line_total|peso }}</div>
+<form method="post" action="{% url 'sales:cart_update' it.pk 'remove' %}">{% csrf_token %}<button class="link" title="Remove">x</button></form></div>{% endfor %}
+<div class="total"><span>Total</span><span>{{ cart.total|peso }}</span></div>
+<form method="post" action="{% url 'sales:cart_save' %}">{% csrf_token %}
+<label>Client name</label><input name="client_name" value="{{ cart.client_name }}">
+<label>Business</label><input name="client_business" value="{{ cart.client_business }}">
+<div class="two"><div><label>TIN</label><input name="client_tin" value="{{ cart.client_tin }}"></div><div><label>P.O. number</label><input name="po_number" value="{{ cart.po_number }}"></div></div>
+<label>Address</label><input name="client_address" value="{{ cart.client_address }}">
+<div class="two"><div><label>Payment terms</label><input name="payment_terms" value="{{ cart.payment_terms }}"></div><div><label>Amount received</label><input name="amount_paid" inputmode="decimal" value="{% if cart.amount_paid %}{{ cart.amount_paid }}{% endif %}"></div></div>
+<p class="muted">Payment: {{ cart.payment_status }}</p>
+<div class="actions"><button class="btn btn-outline" name="action" value="save_draft">Save as Draft</button><button class="btn btn-outline" name="action" value="record_payment">Record Payment</button><button class="btn" name="action" value="finalize">Finalize Sale</button></div>
+</form>
+{% else %}<p class="muted">The cart is empty. Click an item to add it.</p>{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Returns & Voids · Optimum{% endblock %}
+{% block content %}
+<h1>Returns &amp; Voids</h1>
+<div class="tabs"><a class="tab {% if tab != 'void' %}active{% endif %}" href="?tab=return">Return / Exchange</a><a class="tab {% if tab == 'void' %}active{% endif %}" href="?tab=void">Void</a></div>
+<div class="row">
+<div class="card grow"><h2>1. Find order</h2>
+<form class="filters" method="get"><input type="hidden" name="tab" value="{{ tab }}"><input name="q" value="{{ q }}" placeholder="Order no. / client / P.O." style="min-width:260px"><button class="btn btn-outline">Search</button></form>
+{% for o in matches %}<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)"><span>{{ o.number }} · {{ o.client_label }} · {{ o.total|peso }}</span><a href="?tab={{ tab }}&order={{ o.pk }}">Select</a></div>
+{% empty %}{% if q %}<p class="muted">No finalized orders match.</p>{% endif %}{% endfor %}
+{% if order %}
+<h2 style="margin-top:18px">2. {% if tab == 'void' %}Order{% else %}Items{% endif %} · {{ order.number }}</h2>
+{% if tab == 'void' %}
+<table><tr><th>Item</th><th class="num">Sold</th><th class="num">Still to restock</th></tr>
+{% for it in order.items.all %}<tr><td>{{ it.product.name }}</td><td class="num">{{ it.quantity }}</td><td class="num">{{ it.remaining }}</td></tr>{% endfor %}</table>
+{% else %}
+<form id="retform" method="post" action="{% url 'sales:returns_process' %}">{% csrf_token %}<input type="hidden" name="order" value="{{ order.pk }}">
+<table><tr><th>Item</th><th class="num">Sold</th><th class="num">Returned</th><th>Return qty</th></tr>
+{% for it in order.items.all %}<tr><td>{{ it.product.name }}</td><td class="num">{{ it.quantity }}</td><td class="num">{{ it.returned_qty }}</td>
+<td><input type="number" min="0" max="{{ it.remaining }}" value="0" name="qty_{{ it.pk }}" data-price="{{ it.unit_price }}" class="rq" style="width:80px" {% if it.remaining == 0 %}disabled{% endif %}></td></tr>{% endfor %}</table>
+</form>
+{% endif %}
+{% endif %}
+</div>
+
+{% if order %}
+<div class="card" style="width:380px"><h2>3. Details</h2>
+{% if tab == 'void' %}
+<form method="post" action="{% url 'sales:returns_void' %}" onsubmit="return confirm('Void this sale? Items go back to stock.')">{% csrf_token %}<input type="hidden" name="order" value="{{ order.pk }}">
+<label>Reason</label><input name="reason" required><p class="muted">Voiding cancels {{ order.number }} and puts the unreturned items back in stock.</p><button class="btn btn-danger">Confirm void</button></form>
+{% else %}
+<div class="actions"><label><input type="radio" name="kind" value="return" form="retform" checked> Return</label><label><input type="radio" name="kind" value="exchange" form="retform"> Exchange</label></div>
+<label>Reason</label><input name="reason" form="retform" required>
+<div id="exbox" style="display:none"><label>Replacement item</label><select name="replacement" form="retform" id="repl"><option value="">Choose...</option>{% for p in products %}<option value="{{ p.pk }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.price|peso }}, {{ p.quantity }} in stock)</option>{% endfor %}</select></div>
+<div class="slot" id="refund" style="margin:12px 0">Refund amount: ₱0.00</div>
+<button class="btn" form="retform">Confirm</button>
+{% endif %}
+</div>
+{% endif %}
+</div>
+<script>
+(function(){
+  var f=document.getElementById('retform'); if(!f) return;
+  var out=document.getElementById('refund'), box=document.getElementById('exbox'), repl=document.getElementById('repl');
+  function money(n){return '₱'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function calc(){
+    var kind=f.querySelector('input[name=kind]:checked')||document.querySelector('input[name=kind]:checked'), val=0, qty=0;
+    document.querySelectorAll('.rq').forEach(function(i){var q=parseInt(i.value||'0',10)||0; val+=q*parseFloat(i.dataset.price); qty+=q;});
+    if(kind && kind.value==='exchange'){
+      box.style.display='block';
+      var p=repl.options[repl.selectedIndex]; var rp=p&&p.dataset.price?parseFloat(p.dataset.price):0;
+      var diff=val-rp*qty; out.textContent=(diff>=0?'Refund amount: ':'Customer pays: ')+money(diff);
+    } else { box.style.display='none'; out.textContent='Refund amount: '+money(val); }
+  }
+  document.querySelectorAll('.rq,input[name=kind],#repl').forEach(function(e){e.addEventListener('input',calc);e.addEventListener('change',calc);});
+  calc();
+})();
+</script>
+{% endblock %}
