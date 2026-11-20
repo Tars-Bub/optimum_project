@@ -1,0 +1,6 @@
+{% extends 'web/base.html' %}
+{% block content %}<div style="display:flex;justify-content:space-between;align-items:center"><h1>Staff Accounts <span class="muted" style="font-size:14px">(Admin only)</span></h1><button class="btn">Add staff</button></div>
+<div class="tabs"><a class="tab {% if tab != 'pending' %}active{% endif %}" href="?tab=accounts">Accounts</a><a class="tab {% if tab == 'pending' %}active{% endif %}" href="?tab=pending">Pending Registrations</a></div>
+<div class="card"><table><tr><th>Name</th><th>Position</th><th>Email</th><th>Contact</th><th>Username</th><th>Status</th><th>Actions</th></tr>
+{% if tab == 'pending' %}<tr><td>Staff name</td><td>Clerk</td><td>email</td><td>09xx</td><td>user3</td><td><span class="badge pending">Pending</span></td><td>Approve | Reject</td></tr>
+{% else %}<tr><td>Staff name</td><td>Cashier</td><td>email</td><td>09xx</td><td>user1</td><td><span class="badge active">Active</span></td><td>Edit | Deactivate</td></tr><tr><td>Staff name</td><td>Clerk</td><td>email</td><td>09xx</td><td>user2</td><td><span class="badge inactive">Inactive</span></td><td>Edit | Reset pwd</td></tr>{% endif %}</table></div>{% endblock %}

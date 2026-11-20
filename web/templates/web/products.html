@@ -1,0 +1,9 @@
+{% extends 'web/base.html' %}
+{% block content %}<div style="display:flex;justify-content:space-between;align-items:center"><h1>Categories &amp; Products</h1><button class="btn">Add product</button></div>
+<div class="tabs"><a class="tab {% if tab == 'categories' %}active{% endif %}" href="?tab=categories">Categories</a><a class="tab {% if tab != 'categories' %}active{% endif %}" href="?tab=products">Products</a></div>
+<div class="card">
+{% if tab == 'categories' %}<table><tr><th>Category</th><th>Products</th><th>Actions</th></tr>
+<tr><td>Paper &amp; Notebooks</td><td>12</td><td>Edit | Delete</td></tr><tr><td>Writing Supplies</td><td>8</td><td>Edit | Delete</td></tr><tr><td>Ink &amp; Toner</td><td>5</td><td>Edit | Delete</td></tr></table>
+{% else %}<div class="filters"><input placeholder="Search name or code"><select><option>All categories</option></select></div>
+<table><tr><th>Item code</th><th>Name</th><th>Category</th><th class="num">Unit cost</th><th class="num">Price</th><th class="num">Stock</th><th>Status</th><th>Actions</th></tr>
+{% for p in products %}<tr><td>{{ p.code }}</td><td>{{ p.name }}</td><td>{{ p.category }}</td><td class="num">₱{{ p.cost }}</td><td class="num">₱{{ p.price }}</td><td class="num">{{ p.qty }}</td><td><span class="badge {{ p.status }}">{{ p.label }}</span></td><td>Edit | Delete</td></tr>{% endfor %}</table>{% endif %}</div>{% endblock %}

@@ -1,0 +1,9 @@
+{% load static %}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Optimum{% endblock %}</title><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<body><div class="app">
+<aside class="sidebar"><div class="brand">OPTIMUM</div>
+<nav>{% for item in nav_items %}<a href="{{ item.url }}" class="{% if item.active %}active{% endif %}">{{ item.label }}</a>{% endfor %}</nav></aside>
+<div class="main"><header class="topbar"><div class="search"><input placeholder="Search products..."></div>
+<div class="user"><div class="avatar">AD</div><a class="btn btn-outline btn-sm" href="{% url 'login' %}">Log out</a></div></header>
+<main class="content">{% block content %}{% endblock %}</main></div></div></body></html>
