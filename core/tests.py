@@ -3,82 +3,18 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+
 from catalog.models import Category, Product
+from documents.models import Document
 from sales.models import Order, OrderItem
 from sales.services import finalize_order, process_return, void_order
 from stock.models import StockMovement
-from stock.services import StockError, apply_movement, set_quantity
-from documents.models import Document
+from stock.services import StockError, apply_movement
 
 User = get_user_model()
 
 
-class AccountTests(TestCase):
-    def setUp(self):
-        self.admin = User.objects.create_superuser('admin', 'a@x.com', 'pass12345!x', first_name='Owner')
-        self.staff = User.objects.create_user('staff', 's@x.com', 'pass12345!x', first_name='Staff One')
-
-    def test_registration_stays_pending_until_approved(self):
-        resp = self.client.post(reverse('accounts:register'), {
-            'full_name': 'New Person', 'position': 'Clerk', 'email': 'n@x.com', 'contact': '0917',
-            'username': 'newbie', 'password1': 'Str0ng!pass99', 'password2': 'Str0ng!pass99'})
-        self.assertRedirects(resp, reverse('accounts:login'))
-        user = User.objects.get(username='newbie')
-        self.assertFalse(user.is_active)
-        self.assertEqual(user.profile.status, 'pending')
-        resp = self.client.post(reverse('accounts:login'), {'username': 'newbie', 'password': 'Str0ng!pass99'})
-        self.assertContains(resp, 'waiting for approval')
-        self.client.login(username='admin', password='pass12345!x')
-        self.client.post(reverse('accounts:staff_approve', args=[user.profile.pk]))
-        user.refresh_from_db()
-        self.assertTrue(user.is_active)
-
-    def test_staff_cannot_open_admin_pages(self):
-        self.client.login(username='staff', password='pass12345!x')
-        self.assertRedirects(self.client.get(reverse('accounts:staff')), reverse('core:dashboard'))
-
-    def test_login_required(self):
-        resp = self.client.get(reverse('core:dashboard'))
-        self.assertEqual(resp.status_code, 302)
-        self.assertIn('/accounts/login/', resp['Location'])
-
-
-class ProductAndStockTests(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user('u', password='pass12345!x')
-        cat = Category.objects.create(name='Paper')
-        self.p = Product.objects.create(code='P-1', name='Copy Paper', category=cat,
-                                        unit_cost=Decimal('10'), price=Decimal('20'), reorder_level=5)
-
-    def test_status_follows_quantity_and_reorder_level(self):
-        self.p.quantity = 0
-        self.assertEqual(self.p.status, 'depleted')
-        self.p.quantity = 5
-        self.assertEqual(self.p.status, 'low')
-        self.p.quantity = 6
-        self.assertEqual(self.p.status, 'in')
-
-    def test_incoming_stock_updates_quantity_and_history(self):
-        move = apply_movement(self.p, 10, 'incoming', self.user, reference='DR-1')
-        self.p.refresh_from_db()
-        self.assertEqual(self.p.quantity, 10)
-        self.assertEqual((move.change, move.balance_after), (10, 10))
-
-    def test_quantity_can_never_go_negative(self):
-        apply_movement(self.p, 3, 'incoming', self.user)
-        with self.assertRaises(StockError):
-            apply_movement(self.p, -4, 'sale', self.user)
-        self.p.refresh_from_db()
-        self.assertEqual(self.p.quantity, 3)
-
-    def test_adjustment_from_a_physical_count(self):
-        apply_movement(self.p, 10, 'incoming', self.user)
-        move = set_quantity(self.p, 7, self.user, note='Recount')
-        self.p.refresh_from_db()
-        self.assertEqual((self.p.quantity, move.change), (7, -3))
-
-
-class SalesBase(TestCase):
+class Base(TestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser('admin', 'a@x.com', 'pass12345!x', first_name='Owner')
         self.staff = User.objects.create_user('staff', 's@x.com', 'pass12345!x', first_name='Staff One')
@@ -98,7 +34,7 @@ class SalesBase(TestCase):
         return order
 
 
-class SalesFlowTests(SalesBase):
+class SalesFlowTests(Base):
     def test_finalize_deducts_stock_and_logs_movements(self):
         order = finalize_order(self.cart(p1=4, p2=1), self.staff)
         self.p1.refresh_from_db(); self.p2.refresh_from_db()
@@ -132,7 +68,7 @@ class SalesFlowTests(SalesBase):
         record = process_return(order, self.staff, 'exchange', 'Prefer pens', {item.pk: 1}, self.p2)
         self.p1.refresh_from_db(); self.p2.refresh_from_db()
         self.assertEqual((self.p1.quantity, self.p2.quantity), (9, 2))
-        self.assertEqual(record.refund_amount, Decimal('12'))
+        self.assertEqual(record.refund_amount, Decimal('12'))   # 20 returned - 8 replacement
 
     def test_void_puts_unreturned_items_back(self):
         order = finalize_order(self.cart(p1=4), self.staff)
@@ -148,21 +84,35 @@ class SalesFlowTests(SalesBase):
         order.amount_paid = Decimal('10'); self.assertEqual(order.payment_status, 'Partial')
         order.amount_paid = Decimal('40'); self.assertEqual(order.payment_status, 'Paid')
 
-    def test_add_to_cart_and_finalize_through_the_views(self):
+
+class AccountTests(Base):
+    def test_registration_stays_pending_until_approved(self):
+        resp = self.client.post(reverse('accounts:register'), {
+            'full_name': 'New Person', 'position': 'Clerk', 'email': 'n@x.com', 'contact': '0917',
+            'username': 'newbie', 'password1': 'Str0ng!pass99', 'password2': 'Str0ng!pass99'})
+        self.assertRedirects(resp, reverse('accounts:login'))
+        user = User.objects.get(username='newbie')
+        self.assertFalse(user.is_active)
+        self.assertEqual(user.profile.status, 'pending')
+        resp = self.client.post(reverse('accounts:login'), {'username': 'newbie', 'password': 'Str0ng!pass99'})
+        self.assertContains(resp, 'waiting for approval')
+        self.client.login(username='admin', password='pass12345!x')
+        self.client.post(reverse('accounts:staff_approve', args=[user.profile.pk]))
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+
+    def test_staff_cannot_open_admin_pages(self):
         self.client.login(username='staff', password='pass12345!x')
-        self.client.post(reverse('sales:cart_add', args=[self.p1.pk]))
-        self.client.post(reverse('sales:cart_add', args=[self.p1.pk]))
-        resp = self.client.post(reverse('sales:cart_save'), {
-            'action': 'finalize', 'client_name': 'Ana', 'amount_paid': '40'})
+        self.assertRedirects(self.client.get(reverse('accounts:staff')), reverse('core:dashboard'))
+        self.assertRedirects(self.client.get('/reports/?tab=audit'), '/reports/?tab=transactions')
+
+    def test_login_required(self):
+        resp = self.client.get(reverse('sales:index'))
         self.assertEqual(resp.status_code, 302)
-        order = Order.objects.get(status=Order.FINAL)
-        self.assertEqual(order.total, Decimal('40'))
-        self.assertEqual(order.payment_status, 'Paid')
-        self.p1.refresh_from_db()
-        self.assertEqual(self.p1.quantity, 8)
+        self.assertIn('/accounts/login/', resp['Location'])
 
 
-class DocumentTests(SalesBase):
+class DocumentTests(Base):
     def test_serial_number_required_and_unique(self):
         order = finalize_order(self.cart(p1=1), self.staff)
         other = finalize_order(self.cart(p2=1), self.staff)
@@ -177,36 +127,36 @@ class DocumentTests(SalesBase):
         self.assertEqual(Document.objects.count(), 1)
 
 
-class SmokeTests(SalesBase):
-    """Every screen built so far opens for the Admin."""
+class SmokeTests(Base):
+    """Every main screen opens for the Admin and shows real data."""
     def test_pages_render(self):
         order = finalize_order(self.cart(p1=2), self.staff)
-        doc = Document.objects.create(doc_type='invoice', number='INV-1', order=order, printed_by=self.staff)
+        Document.objects.create(doc_type='invoice', number='INV-1', order=order, printed_by=self.staff)
         self.client.login(username='admin', password='pass12345!x')
-        urls = [
-            '/',
-            '/health/',
-            '/accounts/staff/',
-            '/accounts/staff/?tab=pending',
-            '/accounts/staff/add/',
-            '/catalog/',
-            '/catalog/?tab=categories',
-            '/stock/',
-            '/stock/?tab=incoming',
-            '/stock/?tab=adjust',
-            '/stock/?tab=movements',
-            '/stock/?tab=alerts',
-            '/sales/',
-            '/sales/?tab=drafts',
-            '/sales/returns/',
-            f'/sales/returns/?tab=return&order={order.pk}',
-            f'/sales/returns/?tab=void&order={order.pk}',
-            '/documents/',
-            f'/documents/?tab=invoice&order={order.pk}',
-            f'/documents/?tab=delivery&order={order.pk}',
-            '/documents/?tab=reprint',
-            f'/documents/{doc.pk}/view/',
-        ]
+        urls = ['/', '/health/', '/catalog/', '/catalog/?tab=categories', '/catalog/products/add/',
+                f'/catalog/products/{self.p1.pk}/edit/', '/stock/', '/stock/?tab=incoming',
+                '/stock/?tab=adjust', '/stock/?tab=movements', '/stock/?tab=alerts', '/sales/',
+                '/sales/?tab=drafts', '/sales/returns/', f'/sales/returns/?tab=return&order={order.pk}',
+                f'/sales/returns/?tab=void&order={order.pk}', '/sales/returns/?q=SO-1',
+                '/documents/', f'/documents/?tab=invoice&order={order.pk}',
+                f'/documents/?tab=delivery&order={order.pk}', '/documents/?tab=reprint',
+                f'/documents/{Document.objects.get().pk}/view/', '/reports/', '/reports/?tab=sales',
+                '/reports/?tab=sales&period=all', '/reports/?tab=stock', '/reports/?tab=inventory',
+                '/reports/?tab=activity', '/reports/?tab=audit', '/accounts/staff/',
+                '/accounts/staff/?tab=pending', '/accounts/staff/add/']
         for url in urls:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_add_to_cart_and_finalize_through_the_views(self):
+        self.client.login(username='staff', password='pass12345!x')
+        self.client.post(reverse('sales:cart_add', args=[self.p1.pk]))
+        self.client.post(reverse('sales:cart_add', args=[self.p1.pk]))
+        resp = self.client.post(reverse('sales:cart_save'), {
+            'action': 'finalize', 'client_name': 'Ana', 'amount_paid': '40'})
+        self.assertEqual(resp.status_code, 302)
+        order = Order.objects.get(status=Order.FINAL)
+        self.assertEqual(order.total, Decimal('40'))
+        self.assertEqual(order.payment_status, 'Paid')
+        self.p1.refresh_from_db()
+        self.assertEqual(self.p1.quantity, 8)

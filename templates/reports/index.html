@@ -1,0 +1,62 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Reports & Search · Optimum{% endblock %}
+{% block content %}
+<h1>Reports &amp; Search</h1>
+<div class="tabs">
+<a class="tab {% if tab == 'transactions' %}active{% endif %}" href="?tab=transactions">Transactions</a>
+<a class="tab {% if tab == 'sales' %}active{% endif %}" href="?tab=sales">Sales Report</a>
+<a class="tab {% if tab == 'stock' %}active{% endif %}" href="?tab=stock">Stock Report</a>
+<a class="tab {% if tab == 'inventory' %}active{% endif %}" href="?tab=inventory">Inventory Summary</a>
+<a class="tab {% if tab == 'activity' %}active{% endif %}" href="?tab=activity">Activity</a>
+{% if is_admin %}<a class="tab {% if tab == 'audit' %}active{% endif %}" href="?tab=audit">Audit Log</a>{% endif %}
+</div>
+
+{% if tab == 'sales' or tab == 'stock' %}
+<div class="tabs">{% for key, label in periods %}<a class="tab {% if period == key %}active{% endif %}" href="?tab={{ tab }}&period={{ key }}">{{ label }}</a>{% endfor %}</div>
+{% endif %}
+
+{% if tab == 'transactions' %}
+<div class="card">
+<form class="filters" method="get"><input type="hidden" name="tab" value="transactions">
+<input type="date" name="from" value="{{ date_from }}" title="From"><input type="date" name="to" value="{{ date_to }}" title="To">
+<input name="q" value="{{ q }}" placeholder="Client, order no. (SO-0001), P.O. or doc number">
+<select name="status"><option value="">All statuses</option><option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option><option value="returned" {% if status == 'returned' %}selected{% endif %}>Returned</option><option value="voided" {% if status == 'voided' %}selected{% endif %}>Voided</option></select>
+<button class="btn btn-outline">Search</button><a class="btn btn-outline" href="?tab=transactions">Clear</a></form>
+<table><tr><th>Order</th><th>Date</th><th>Client</th><th>Documents</th><th class="num">Total</th><th>Payment</th><th>Status</th><th>Record payment</th></tr>
+{% for o in orders %}<tr><td>{{ o.number }}</td><td>{{ o.finalized_at|date:"M d, Y H:i" }}</td><td>{{ o.client_label }}</td>
+<td>{% for d in o.documents.all %}{{ d.number }}{% if not forloop.last %}, {% endif %}{% endfor %}</td><td class="num">{{ o.total|peso }}</td>
+<td><span class="badge {{ o.payment_status|lower }}">{{ o.payment_status }}</span></td><td><span class="badge {{ o.status_label|lower }}">{{ o.status_label }}</span></td>
+<td>{% if o.status == 'finalized' and o.payment_status != 'Paid' %}<form class="inline" method="post" action="{% url 'sales:payment_add' o.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><input name="amount" placeholder="{{ o.balance|floatformat:2 }}" style="width:90px"> <button class="btn btn-sm">Add</button></form>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="8" class="muted">No transactions found.</td></tr>{% endfor %}</table></div>
+
+{% elif tab == 'sales' %}
+<div class="cards three">
+<div class="card stat"><small>Total sales</small><strong>{{ total_sales|peso }}</strong></div>
+<div class="card stat"><small>Orders</small><strong>{{ order_count }}</strong></div>
+<div class="card stat"><small>Top item</small><strong style="font-size:20px">{{ top_item }}</strong></div></div>
+<div class="row"><div class="card grow"><h2>Sales by day</h2>
+{% if chart %}<div class="chart">{% for c in chart %}<div title="{{ c.value|peso }}"><small>{{ c.value|peso }}</small><span style="height:{{ c.pct }}%"></span></div>{% endfor %}</div>
+<div class="chart" style="height:auto;border:0">{% for c in chart %}<div><small class="muted">{{ c.label }}</small></div>{% endfor %}</div>{% else %}<p class="muted">No sales in this period.</p>{% endif %}</div>
+<div class="card" style="width:380px"><table><tr><th>Date</th><th>Order</th><th class="num">Total</th></tr>
+{% for o in rows %}<tr><td>{{ o.finalized_at|date:"M d" }}</td><td>{{ o.number }}</td><td class="num">{{ o.total|peso }}</td></tr>{% empty %}<tr><td colspan="3" class="muted">No orders.</td></tr>{% endfor %}</table></div></div>
+
+{% elif tab == 'stock' %}
+<div class="card"><table><tr><th>Item</th><th>Category</th><th class="num">Stock in</th><th class="num">Stock out</th><th class="num">Net</th><th class="num">On hand</th><th>Status</th></tr>
+{% for r in rows %}<tr><td>{{ r.name }} <span class="muted">{{ r.code }}</span></td><td>{{ r.category.name }}</td><td class="num">{{ r.stock_in }}</td><td class="num">{{ r.out_abs }}</td><td class="num">{{ r.net }}</td><td class="num">{{ r.quantity }}</td><td><span class="badge {{ r.status }}">{{ r.status_label }}</span></td></tr>
+{% empty %}<tr><td colspan="7" class="muted">No items.</td></tr>{% endfor %}</table></div>
+
+{% elif tab == 'inventory' %}
+<div class="card"><table><tr><th>Category</th><th class="num">Products</th><th class="num">Units on hand</th><th class="num">Stock value (cost)</th><th class="num">Low</th><th class="num">Depleted</th></tr>
+{% for c in cats %}<tr><td>{{ c.name }}</td><td class="num">{{ c.products }}</td><td class="num">{{ c.units }}</td><td class="num">{{ c.value|peso }}</td><td class="num">{{ c.low }}</td><td class="num">{{ c.depleted }}</td></tr>{% endfor %}
+<tr><th>Total</th><th class="num">{{ totals.products }}</th><th class="num">{{ totals.units }}</th><th class="num">{{ totals.value|peso }}</th><th class="num">{{ totals.low }}</th><th class="num">{{ totals.depleted }}</th></tr></table></div>
+
+{% else %}
+<div class="card">
+<form class="filters" method="get"><input type="hidden" name="tab" value="{{ tab }}">
+{% if tab == 'audit' %}<select name="user"><option value="">All users</option>{% for u in users %}<option value="{{ u.username }}" {% if who == u.username %}selected{% endif %}>{{ u.username }}</option>{% endfor %}</select>{% endif %}
+<input name="q" value="{{ q }}" placeholder="Search actions"><button class="btn btn-outline">Search</button></form>
+<table><tr><th>When</th>{% if tab == 'audit' %}<th>User</th>{% endif %}<th>Action</th><th>Detail</th></tr>
+{% for l in logs %}<tr><td>{{ l.created_at|date:"M d, H:i" }}</td>{% if tab == 'audit' %}<td>{{ l.user.username|default:"-" }}</td>{% endif %}<td>{{ l.action }}</td><td class="muted">{{ l.detail }}</td></tr>
+{% empty %}<tr><td colspan="4" class="muted">Nothing logged yet.</td></tr>{% endfor %}</table></div>
+{% endif %}
+{% endblock %}

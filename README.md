@@ -1,8 +1,8 @@
 # Optimum Inventory Tracking and Sales Processing System
 
-Work in progress: stage 4 of 6.
+Work in progress: stage 5 of 6.
 
-**Included so far:** Invoice and Delivery Receipt screens, unique serial numbers, Reprint, and the print page.
+**Included so far:** Reports & Search: Transactions, Sales, Stock, Inventory Summary, Activity, Audit Log.
 
 ## Run it
 
