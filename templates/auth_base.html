@@ -3,7 +3,7 @@
 <title>{% block title %}Optimum{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ asset_v }}"></head>
 <body><div class="auth"><div class="auth-box">
 <a class="logo dark" href="/"><span class="mark">O</span><span><b>Optimum</b><small>BUSINESS PRODUCTS</small></span></a>
 {% if messages %}<div class="messages static-msgs" style="margin-bottom:12px">{% for m in messages %}<div class="msg {{ m.tags }}"><span class="tile-ic">{% icon 'check' 15 %}</span><div class="body">{{ m }}</div></div>{% endfor %}</div>{% endif %}

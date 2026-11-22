@@ -3,7 +3,7 @@
 <title>{% block title %}Optimum{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ asset_v }}"></head>
 <body><div class="app">
 <aside class="sidebar">
 <a class="logo" href="{% url 'core:dashboard' %}"><span class="mark">O</span><span><b>Optimum</b><small>BUSINESS PRODUCTS</small></span></a>

@@ -1,6 +1,15 @@
+from django.conf import settings
 from django.apps import apps
 from django.db.models import F
 from django.urls import NoReverseMatch, reverse
+
+
+def _asset_version():
+    """Changes whenever app.css changes, so browsers never keep showing an old stylesheet."""
+    try:
+        return int((settings.BASE_DIR / 'static' / 'css' / 'app.css').stat().st_mtime)
+    except OSError:
+        return 0
 
 
 def layout(request):
@@ -10,7 +19,7 @@ def layout(request):
     """
     user = request.user
     if not user.is_authenticated:
-        return {}
+        return {'asset_v': _asset_version()}
     profile = getattr(user, 'profile', None)
     is_admin = bool(profile and profile.role == 'admin')
     match = request.resolver_match
@@ -45,6 +54,6 @@ def layout(request):
                           'active': any(view_name.startswith(p) for p in prefixes)})
     name = profile.display_name if profile else user.username
     initials = ''.join(w[0] for w in name.split()[:2]).upper() or 'U'
-    return {'nav_items': nav_items, 'is_admin': is_admin, 'user_name': name, 'user_initials': initials,
+    return {'asset_v': _asset_version(), 'nav_items': nav_items, 'is_admin': is_admin, 'user_name': name, 'user_initials': initials,
             'user_role': (profile.position or profile.get_role_display().split(' /')[0]) if profile else '',
             'low_total': low, 'style_active': view_name.startswith('core:style')}
