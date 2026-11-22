@@ -28,8 +28,28 @@ def _qr_svg(url):
 
 @login_required
 def index(request):
-    payments = MayaPayment.objects.select_related('order')[:200]
-    return render(request, 'payments/index.html', {'payments': payments})
+    payments = MayaPayment.objects.select_related('order')
+    unpaid = [o for o in Order.objects.filter(status=Order.FINAL).prefetch_related('items')
+              .order_by('-finalized_at')[:100] if o.balance > 0][:15]
+    stats = {s: payments.filter(status=s).count() for s in ('pending', 'paid', 'failed')}
+    stats['unpaid'] = len(unpaid)
+    return render(request, 'payments/index.html', {'payments': payments[:200], 'unpaid': unpaid, 'stats': stats})
+
+
+@login_required
+@require_POST
+def sms_link(request, pk):
+    from notifications.services import send_payment_link
+    payment = get_object_or_404(MayaPayment.objects.select_related('order'), pk=pk)
+    if payment.status != MayaPayment.PENDING or not payment.checkout_url:
+        messages.error(request, 'This checkout is no longer open, so there is no link to send.')
+        return redirect('payments:maya_detail', pk=payment.pk)
+    row = send_payment_link(payment, request.POST.get('number', ''), request.user)
+    if row.status == 'sent':
+        messages.success(request, f'Payment link sent by SMS to {row.recipient}.')
+    else:
+        messages.error(request, f'SMS not sent: {row.detail}')
+    return redirect('payments:maya_detail', pk=payment.pk)
 
 
 @login_required

@@ -15,8 +15,8 @@ class ProductInput(forms.TextInput):
         box = super().render(name, value, attrs, renderer)
         products = Product.objects.filter(is_active=True).order_by('code')
         options = format_html_join(
-            '', '<option value="{}">{} (on hand: {})</option>',
-            ((f'{p.code} \u2014 {p.name}', p.name, p.quantity) for p in products))
+            '', '<option value="{}" data-qty="{}">{} (on hand: {})</option>',
+            ((f'{p.code} \u2014 {p.name}', p.quantity, p.name, p.quantity) for p in products))
         return format_html('{}<datalist id="{}">{}</datalist>', box, list_id, options)
 
 
@@ -47,12 +47,24 @@ class ProductField(forms.Field):
 
 class IncomingForm(forms.Form):
     product = ProductField(label='Item')
-    quantity = forms.IntegerField(min_value=1)
-    reference = forms.CharField(max_length=60, required=False, label='Delivery receipt / supplier')
-    note = forms.CharField(max_length=255, required=False)
+    quantity = forms.IntegerField(min_value=1, label='Quantity received',
+                                  widget=forms.NumberInput(attrs={'placeholder': '0'}))
+    received_on = forms.DateField(label='Date received', required=False, widget=forms.DateInput(
+        attrs={'type': 'date'}, format='%Y-%m-%d'))
+    supplier = forms.CharField(max_length=120, required=False,
+                               widget=forms.TextInput(attrs={'placeholder': 'e.g. Office Supply Co.'}))
+    reference = forms.CharField(max_length=60, required=False,
+                                widget=forms.TextInput(attrs={'placeholder': 'PO or invoice number'}))
+    note = forms.CharField(max_length=255, required=False, label='Notes',
+                           widget=forms.Textarea(attrs={'placeholder': 'Add receiving notes (optional)', 'rows': 3}))
+
+
+REASONS = ['Cycle count', 'Damaged goods', 'Lost or missing', 'Found stock', 'Data entry correction', 'Other']
 
 
 class AdjustForm(forms.Form):
     product = ProductField(label='Item')
-    counted = forms.IntegerField(min_value=0, label='Counted quantity')
-    reason = forms.CharField(max_length=255)
+    counted = forms.IntegerField(min_value=0, label='New count', widget=forms.NumberInput(attrs={'placeholder': '0'}))
+    reason = forms.ChoiceField(choices=[('', 'Select an adjustment reason')] + [(r, r) for r in REASONS])
+    note = forms.CharField(max_length=200, required=False, label='Notes',
+                           widget=forms.Textarea(attrs={'placeholder': 'Describe why this adjustment is needed', 'rows': 3}))

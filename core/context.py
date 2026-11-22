@@ -22,25 +22,29 @@ def layout(request):
         low = Product.objects.filter(is_active=True, quantity__lte=F('reorder_level')).count()
 
     items = [
-        ('Dashboard', 'core:dashboard', ('core:dashboard',), 0),
-        ('Categories & Products', 'catalog:products', ('catalog:',), 0),
-        ('Stock', 'stock:index', ('stock:',), low),
-        ('Sales', 'sales:index', ('sales:index', 'sales:cart', 'sales:draft'), 0),
-        ('Returns & Voids', 'sales:returns_index', ('sales:returns',), 0),
-        ('Documents', 'documents:index', ('documents:',), 0),
-        ('Reports & Search', 'reports:index', ('reports:',), 0),
-        ('Maya Payments', 'payments:index', ('payments:',), 0),
+        ('Dashboard', 'dashboard', 'core:dashboard', ('core:dashboard',), 0),
+        ('Categories & Items', 'box', 'catalog:products', ('catalog:',), 0),
+        ('Stock', 'layers', 'stock:index', ('stock:',), low),
+        ('Sales', 'cart', 'sales:index', ('sales:index', 'sales:cart', 'sales:draft'), 0),
+        ('Returns & Voids', 'refresh', 'sales:returns_index', ('sales:returns',), 0),
+        ('Documents', 'file', 'documents:index', ('documents:',), 0),
+        ('Reports & Search', 'chart', 'reports:index', ('reports:',), 0),
+        ('Data', 'database', 'data:index', ('data:',), 0),
+        ('Maya Payments', 'card', 'payments:index', ('payments:',), 0),
+        ('SMS Messages', 'message', 'notifications:index', ('notifications:',), 0),
     ]
     if is_admin:
-        items.append(('Staff Accounts (Admin)', 'accounts:staff', ('accounts:staff',), 0))
+        items.append(('Staff Accounts', 'users', 'accounts:staff', ('accounts:staff',), 0))
     nav_items = []
-    for label, name, prefixes, badge in items:
+    for label, icon, name, prefixes, badge in items:
         try:
             url = reverse(name)
         except NoReverseMatch:
             continue
-        nav_items.append({'label': label, 'url': url, 'badge': badge,
+        nav_items.append({'label': label, 'icon': icon, 'url': url, 'badge': badge,
                           'active': any(view_name.startswith(p) for p in prefixes)})
     name = profile.display_name if profile else user.username
     initials = ''.join(w[0] for w in name.split()[:2]).upper() or 'U'
-    return {'nav_items': nav_items, 'is_admin': is_admin, 'user_name': name, 'user_initials': initials}
+    return {'nav_items': nav_items, 'is_admin': is_admin, 'user_name': name, 'user_initials': initials,
+            'user_role': (profile.position or profile.get_role_display().split(' /')[0]) if profile else '',
+            'low_total': low, 'style_active': view_name.startswith('core:style')}

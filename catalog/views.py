@@ -14,10 +14,11 @@ from .models import Category, Product
 
 @login_required
 def products(request):
-    tab = request.GET.get('tab', 'products')
+    tab = request.GET.get('tab', 'categories')
     q = request.GET.get('q', '').strip()
     cat = request.GET.get('category', '')
-    ctx = {'tab': tab, 'q': q, 'cat': cat, 'category_form': CategoryForm()}
+    ctx = {'tab': tab, 'q': q, 'cat': cat, 'category_form': CategoryForm(), 'product_form': ProductForm(),
+           'cat_total': Category.objects.count(), 'item_total': Product.objects.filter(is_active=True).count()}
     if tab == 'categories':
         cats = Category.objects.annotate(n=Count('products'))
         if q:
@@ -48,7 +49,7 @@ def product_add(request):
                 apply_movement(product, opening, 'opening', request.user, note='Opening stock')
         audit(request.user, 'Product added', f'{product.code} {product.name}')
         messages.success(request, f'{product.name} added.')
-        return redirect('catalog:products')
+        return redirect('/catalog/?tab=items')
     return render(request, 'catalog/product_form.html', {'form': form, 'title': 'Add product'})
 
 
@@ -60,7 +61,7 @@ def product_edit(request, pk):
         form.save()
         audit(request.user, 'Product edited', f'{product.code} {product.name}')
         messages.success(request, 'Product updated.')
-        return redirect('catalog:products')
+        return redirect('/catalog/?tab=items')
     return render(request, 'catalog/product_form.html', {
         'form': form, 'title': f'Edit {product.code}', 'product': product})
 
@@ -78,7 +79,7 @@ def product_delete(request, pk):
         product.save(update_fields=['is_active'])
         messages.info(request, f'{product.name} is used in past records, so it was archived instead of deleted.')
     audit(request.user, 'Product removed', f'{product.code} {product.name}')
-    return redirect('catalog:products')
+    return redirect('/catalog/?tab=items')
 
 
 @login_required

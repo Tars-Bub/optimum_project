@@ -1,48 +1,78 @@
 {% extends 'base.html' %}{% load ui %}
 {% block title %}Stock · Optimum{% endblock %}
 {% block content %}
-<h1>Stock</h1>
+{% include 'partials/head.html' with eyebrow='Inventory' title='Stock Management' sub='Track incoming stock, adjustments, and quantities on hand.' %}
 <div class="tabs">
 <a class="tab {% if tab == 'levels' %}active{% endif %}" href="?tab=levels">Levels</a>
 <a class="tab {% if tab == 'incoming' %}active{% endif %}" href="?tab=incoming">Incoming</a>
 <a class="tab {% if tab == 'adjust' %}active{% endif %}" href="?tab=adjust">Adjust</a>
 <a class="tab {% if tab == 'movements' %}active{% endif %}" href="?tab=movements">Movements</a>
-<a class="tab {% if tab == 'alerts' %}active{% endif %}" href="?tab=alerts">Alerts{% if alert_count %}<span class="count">{{ alert_count }}</span>{% endif %}</a>
+<a class="tab {% if tab == 'alerts' %}active{% endif %}" href="?tab=alerts">Alerts{% if alert_count %} <span class="count">{{ alert_count }}</span>{% endif %}</a>
 </div>
 
 {% if tab == 'levels' %}
-<div class="card">
-<form class="filters" method="get"><input type="hidden" name="tab" value="levels"><input name="q" value="{{ q }}" placeholder="Search item">
-<select name="category"><option value="">All categories</option>{% for c in all_categories %}<option value="{{ c.pk }}" {% if cat == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select><button class="btn btn-outline">Filter</button></form>
-<table><tr><th>Item</th><th>Category</th><th>Stock vs reorder level</th><th class="num">Qty</th><th class="num">Reorder at</th><th>Status</th></tr>
-{% for p in items %}<tr><td>{{ p.name }} <span class="muted">{{ p.code }}</span></td><td>{{ p.category.name }}</td>
-<td><div class="bar"><i class="{{ p.status }}" style="width:{{ p.stock_percent }}%"></i></div></td>
-<td class="num">{{ p.quantity }}</td><td class="num">{{ p.reorder_level }}</td><td><span class="badge {{ p.status }}">{{ p.status_label }}</span></td></tr>
-{% empty %}<tr><td colspan="6" class="muted">No items found.</td></tr>{% endfor %}</table></div>
+<div class="card"><div class="card-head"><div><h2>Stock levels</h2><p>Monitor quantities and reorder status across your inventory.</p></div><a class="btn" href="?tab=incoming">{% icon 'download' 15 %} Record incoming</a></div>
+<form class="card-bar" method="get"><input type="hidden" name="tab" value="levels"><div class="field-ic grow" style="max-width:320px">{% icon 'search' 15 %}<input name="q" value="{{ q }}" placeholder="Search item or SKU..."></div>
+<select name="category" onchange="this.form.submit()" style="width:auto"><option value="">Category: All categories</option>{% for c in all_categories %}<option value="{{ c.pk }}" {% if cat == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select><span class="muted" style="margin-left:auto;font-size:12px">{{ items|length }} items</span></form>
+<table><tr><th>Item</th><th>Category</th><th>Stock level</th><th class="num">On hand</th><th class="num">Threshold</th><th>Status</th></tr>
+{% for p in items %}<tr><td><div class="cellflex"><span class="chip">{{ p.name|initials }}</span><div><b>{{ p.name }}</b><small>{{ p.code }}</small></div></div></td><td class="muted">{{ p.category.name }}</td>
+<td><div class="barwrap"><div class="bar"><i class="{{ p.status }}" style="width:{{ p.stock_percent }}%"></i></div>{{ p.stock_percent }}%</div></td>
+<td class="num"><b>{{ p.quantity }}</b></td><td class="num muted">{{ p.reorder_level }}</td>
+<td>{% if p.status == 'depleted' %}<span class="badge depleted">Out of stock</span>{% elif p.status == 'low' %}<span class="badge low">Low stock</span>{% else %}<span class="badge in">In stock</span>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="6"><div class="empty"><b>No items found</b></div></td></tr>{% endfor %}</table></div>
 
 {% elif tab == 'incoming' %}
-<div class="card" style="max-width:520px"><h2>Record incoming stock</h2>
-<form method="post">{% csrf_token %}<input type="hidden" name="form" value="incoming">
-{% for field in incoming_form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="err">{{ e }}</div>{% endfor %}{% endfor %}
-<p><button class="btn">Add to stock</button></p></form></div>
+<div class="card form-card"><div class="form-head"><span class="tile-ic">{% icon 'download' 20 %}</span><div><div class="eyebrow">Receive inventory</div><h2>Record incoming stock</h2><p>Add newly received units to your inventory and movement history.</p></div></div>
+<form method="post">{% csrf_token %}<input type="hidden" name="form" value="incoming"><div class="form-body">
+{% with f=incoming_form %}
+<label for="{{ f.product.id_for_label }}">Item</label>{{ f.product }}{% for e in f.product.errors %}<div class="err">{{ e }}</div>{% endfor %}
+<div class="two"><div><label for="{{ f.quantity.id_for_label }}">Quantity received</label>{{ f.quantity }}{% for e in f.quantity.errors %}<div class="err">{{ e }}</div>{% endfor %}</div><div><label for="{{ f.received_on.id_for_label }}">Date received</label>{{ f.received_on }}{% for e in f.received_on.errors %}<div class="err">{{ e }}</div>{% endfor %}</div></div>
+<div class="two"><div><label for="{{ f.supplier.id_for_label }}">Supplier</label>{{ f.supplier }}</div><div><label for="{{ f.reference.id_for_label }}">Reference</label>{{ f.reference }}{% for e in f.reference.errors %}<div class="err">{{ e }}</div>{% endfor %}</div></div>
+<label for="{{ f.note.id_for_label }}">Notes</label>{{ f.note }}{% for e in f.note.errors %}<div class="err">{{ e }}</div>{% endfor %}
+{% endwith %}</div>
+<div class="card-foot"><a class="btn btn-outline" href="?tab=levels">Cancel</a><button class="btn">{% icon 'check' 15 %} Save incoming stock</button></div></form></div>
 
 {% elif tab == 'adjust' %}
-<div class="card" style="max-width:520px"><h2>Adjust from a physical count</h2>
-<form method="post">{% csrf_token %}<input type="hidden" name="form" value="adjust">
-{% for field in adjust_form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="err">{{ e }}</div>{% endfor %}{% endfor %}
-<p><button class="btn">Save adjustment</button></p></form></div>
+<div class="card form-card"><div class="form-head"><span class="tile-ic">{% icon 'pencil' 20 %}</span><div><div class="eyebrow">Inventory correction</div><h2>Adjust stock count</h2><p>Correct an item's on-hand quantity after a physical count.</p></div></div>
+<form method="post" id="adjform">{% csrf_token %}<input type="hidden" name="form" value="adjust"><div class="form-body">
+{% with f=adjust_form %}
+<label for="{{ f.product.id_for_label }}">Item</label>{{ f.product }}{% for e in f.product.errors %}<div class="err">{{ e }}</div>{% endfor %}
+<div class="two"><div><label>Current count</label><input id="curcount" readonly placeholder="Select an item first"></div><div><label for="{{ f.counted.id_for_label }}">New count</label>{{ f.counted }}{% for e in f.counted.errors %}<div class="err">{{ e }}</div>{% endfor %}</div></div>
+<label for="{{ f.reason.id_for_label }}">Reason</label>{{ f.reason }}{% for e in f.reason.errors %}<div class="err">{{ e }}</div>{% endfor %}
+<label for="{{ f.note.id_for_label }}">Notes</label>{{ f.note }}{% for e in f.note.errors %}<div class="err">{{ e }}</div>{% endfor %}
+{% endwith %}</div>
+<div class="card-foot"><a class="btn btn-outline" href="?tab=levels">Cancel</a><button type="button" class="btn" id="review">Review adjustment {% icon 'chevron-right' 15 %}</button></div></form></div>
+<dialog class="modal" id="m-review"><div class="form-head"><span class="tile-ic">{% icon 'pencil' 18 %}</span><div class="grow"><h2>Review adjustment</h2><p>Check the change before it is saved.</p></div><button class="x" data-close>{% icon 'x' 16 %}</button></div>
+<div class="form-body"><p id="rv-text" style="font-size:15px;margin:0"></p><p class="help" id="rv-reason"></p></div>
+<div class="card-foot"><button class="btn btn-outline" data-close>Back</button><button class="btn" type="submit" form="adjform">Save adjustment</button></div></dialog>
 
 {% elif tab == 'movements' %}
-<div class="card">
-<form class="filters" method="get"><input type="hidden" name="tab" value="movements"><input name="q" value="{{ q }}" placeholder="Search item or reference"><button class="btn btn-outline">Search</button></form>
-<table><tr><th>When</th><th>Item</th><th>Type</th><th class="num">Change</th><th class="num">Balance</th><th>Reference</th><th>By</th></tr>
-{% for m in moves %}<tr><td>{{ m.created_at|date:"M d, H:i" }}</td><td>{{ m.product.name }}</td><td>{{ m.get_kind_display }}</td><td class="num">{{ m.change|stringformat:"+d" }}</td><td class="num">{{ m.balance_after }}</td><td>{{ m.reference }}{% if m.note %} <span class="muted">{{ m.note }}</span>{% endif %}</td><td>{{ m.user.username }}</td></tr>
-{% empty %}<tr><td colspan="7" class="muted">No movements yet.</td></tr>{% endfor %}</table></div>
+<div class="card"><div class="card-head"><div><h2>Stock movements</h2><p>A complete history of inventory coming in, going out, and being adjusted.</p></div></div>
+<div class="card-bar"><span class="muted" style="font-size:12px">Movement type</span><div class="chips">
+{% for key, label in movement_types %}<a class="chipbtn {% if mtype == key %}active{% endif %}" href="?tab=movements&type={{ key }}">{{ label }} <span class="count">{{ counts|get:key }}</span></a>{% endfor %}</div>
+<form method="get" class="field-ic" style="margin-left:auto;width:260px"><input type="hidden" name="tab" value="movements"><input type="hidden" name="type" value="{{ mtype }}">{% icon 'search' 15 %}<input name="q" value="{{ q }}" placeholder="Search item or reference"></form></div>
+<table><tr><th>Date &amp; time</th><th>Item</th><th>Movement</th><th class="num">Quantity</th><th class="num">Balance</th><th>User</th><th>Reference</th></tr>
+{% for m in moves %}<tr><td class="muted">{{ m.created_at|date:"M d, Y · g:i A" }}</td><td><b>{{ m.product.name }}</b></td>
+<td>{% if m.kind == 'adjustment' %}<span class="badge adjust">Adjust</span>{% elif m.change > 0 %}<span class="badge in">In</span>{% else %}<span class="badge out">Out</span>{% endif %}</td>
+<td class="num"><b>{{ m.change|stringformat:"+d" }}</b></td><td class="num">{{ m.balance_after }}</td><td>{{ m.user.profile.display_name|default:m.user.username }}</td>
+<td class="muted">{{ m.reference }}{% if m.supplier %} {{ m.supplier }}{% endif %}{% if m.note %} · {{ m.note }}{% endif %}</td></tr>
+{% empty %}<tr><td colspan="7"><div class="empty"><b>No movements yet</b></div></td></tr>{% endfor %}</table></div>
 
 {% else %}
-<div class="card"><h2>Low and depleted items</h2>
-<table><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th class="num">Reorder at</th><th>Status</th></tr>
-{% for p in alerts %}<tr><td>{{ p.name }} <span class="muted">{{ p.code }}</span></td><td>{{ p.category.name }}</td><td class="num">{{ p.quantity }}</td><td class="num">{{ p.reorder_level }}</td><td><span class="badge {{ p.status }}">{{ p.status_label }}</span></td></tr>
-{% empty %}<tr><td colspan="5" class="muted">All items are above their reorder level.</td></tr>{% endfor %}</table></div>
+<div class="card"><div class="card-head"><div><h2>Low-stock alerts</h2><p>Items at or below their reorder threshold that need attention.</p></div><span class="pill">{{ alert_count }} items need attention</span></div>
+{% for p in alerts %}<div style="display:flex;align-items:center;gap:16px;padding:14px 18px;border-top:1px solid var(--line)">
+<span class="chip">{{ p.name|initials }}</span><div style="flex:1"><b>{{ p.name }}</b> {% if p.status == 'depleted' %}<span class="badge depleted">Out of stock</span>{% else %}<span class="badge low">Low stock</span>{% endif %}<br><small class="muted">{{ p.code }} · {{ p.category.name }}</small></div>
+<div style="text-align:right;width:70px"><small class="muted">On hand</small><br><b style="font-size:18px">{{ p.quantity }}</b></div><div style="text-align:right;width:80px"><small class="muted">Threshold</small><br><b style="font-size:18px">{{ p.reorder_level }}</b></div>
+<a class="btn btn-outline" href="?tab=incoming&item={{ p.code }}">{% icon 'download' 15 %} Record incoming</a></div>
+{% empty %}<div class="empty"><span class="tile-ic">{% icon 'check' 20 %}</span><b>All items are above their reorder level</b></div>{% endfor %}</div>
 {% endif %}
 {% endblock %}
+{% block scripts %}{% if tab == 'adjust' %}<script>
+(function(){var inp=document.getElementById('id_product'),cur=document.getElementById('curcount'),cnt=document.getElementById('id_counted'),form=document.getElementById('adjform');
+function qty(){var v=inp.value,o=document.querySelector('#id_product_options option[value="'+v.replace(/"/g,'\\"')+'"]');return o?parseInt(o.dataset.qty,10):null;}
+function show(){var q=qty();cur.value=q===null?'':q;cur.placeholder='Select an item first';}
+inp.addEventListener('input',show);inp.addEventListener('change',show);show();
+document.getElementById('review').onclick=function(){if(!form.reportValidity())return;var q=qty(),n=parseInt(cnt.value,10);
+document.getElementById('rv-text').innerHTML='<b>'+inp.value.replace(/</g,'&lt;')+'</b><br>'+(q===null?'Current count will be looked up':q)+' → <b>'+n+'</b>'+(q===null?'':' ('+(n-q>=0?'+':'')+(n-q)+')');
+document.getElementById('rv-reason').textContent='Reason: '+form.querySelector('[name=reason]').value;document.getElementById('m-review').showModal();};})();
+</script>{% endif %}{% endblock %}

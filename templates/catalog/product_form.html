@@ -1,9 +1,10 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load ui %}
 {% block title %}{{ title }} · Optimum{% endblock %}
 {% block content %}
-<h1>{{ title }}</h1>
-<div class="card" style="max-width:520px"><form method="post">{% csrf_token %}
-{% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}{% for e in field.errors %}<div class="err">{{ e }}</div>{% endfor %}{% endfor %}
-{% if product %}<p class="help">On-hand quantity ({{ product.quantity }}) changes through the Stock screen so every change is recorded.</p>{% endif %}
-<p><button class="btn">Save</button> <a class="btn btn-outline" href="{% url 'catalog:products' %}">Cancel</a></p></form></div>
+{% include 'partials/head.html' with eyebrow='Inventory' title=title %}
+<div class="card form-card"><div class="form-head"><span class="tile-ic">{% icon 'box' 18 %}</span><div><h2>{{ title }}</h2><p>Fix the highlighted fields and save again.</p></div></div>
+<form method="post">{% csrf_token %}<div class="form-body">
+{% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="err">{{ e }}</div>{% endfor %}{% endfor %}
+{% if product %}<p class="help">On-hand quantity ({{ product.quantity }}) changes through the Stock screen so every change is recorded.</p>{% endif %}</div>
+<div class="card-foot"><a class="btn btn-outline" href="{% url 'catalog:products' %}?tab=items">Cancel</a><button class="btn">Save</button></div></form></div>
 {% endblock %}

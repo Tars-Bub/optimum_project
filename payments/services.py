@@ -51,11 +51,18 @@ def start_checkout(order, user, base_url):
 
     reference = f'{order.number}-{uuid.uuid4().hex[:16]}'
     back = base_url + reverse('payments:maya_return', args=[reference])
-    data = maya.create_checkout(
-        reference, amount, checkout_items(order, amount),
-        {'success': f'{back}?result=success', 'failure': f'{back}?result=failure',
-         'cancel': f'{back}?result=cancel'},
-        metadata={'order': order.number})
+    try:
+        data = maya.create_checkout(
+            reference, amount, checkout_items(order, amount),
+            {'success': f'{back}?result=success', 'failure': f'{back}?result=failure',
+             'cancel': f'{back}?result=cancel'},
+            metadata={'order': order.number})
+    except maya.MayaError as exc:
+        # keep a record so the Maya Payments list shows the attempt that did not go through
+        MayaPayment.objects.create(order=order, reference=reference, amount=amount, created_by=user,
+                                   status=MayaPayment.FAILED, maya_status='NOT_CREATED', note=str(exc)[:200])
+        audit(user, 'Maya checkout failed', f'{order.number} {exc}'[:200])
+        raise
     payment = MayaPayment.objects.create(
         order=order, reference=reference, checkout_id=data['checkoutId'],
         checkout_url=data['redirectUrl'], amount=amount, created_by=user,

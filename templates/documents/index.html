@@ -1,37 +1,65 @@
 {% extends 'base.html' %}{% load ui %}
 {% block title %}Documents · Optimum{% endblock %}
 {% block content %}
-<h1>Documents</h1>
-<div class="tabs"><a class="tab {% if tab == 'invoice' %}active{% endif %}" href="?tab=invoice">Invoice</a><a class="tab {% if tab == 'delivery' %}active{% endif %}" href="?tab=delivery">Delivery Receipt</a><a class="tab {% if tab == 'reprint' %}active{% endif %}" href="?tab=reprint">Reprint</a></div>
+{% include 'partials/head.html' with eyebrow='Operations' title='Documents' sub='Keep purchase orders, invoices, and receipts together.' %}
+<div class="tabs"><a class="tab {% if tab == 'invoice' %}active{% endif %}" href="?tab=invoice">Receipt / Invoice</a><a class="tab {% if tab == 'po' %}active{% endif %}" href="?tab=po">Purchase Order</a><a class="tab {% if tab == 'delivery' %}active{% endif %}" href="?tab=delivery">Delivery Receipt</a><a class="tab {% if tab == 'reprint' %}active{% endif %}" href="?tab=reprint">Reprint <span class="count">{{ doc_count }}</span></a></div>
 
 {% if tab == 'reprint' %}
-<div class="card"><form class="filters" method="get"><input type="hidden" name="tab" value="reprint"><input name="q" value="{{ q }}" placeholder="Doc number or client"><button class="btn btn-outline">Search</button></form>
-<table><tr><th>Type</th><th>Doc number</th><th>Order</th><th>Client</th><th>Printed</th><th class="num">Reprints</th><th></th></tr>
-{% for d in docs %}<tr><td>{{ d.get_doc_type_display }}</td><td>{{ d.number }}</td><td>{{ d.order.number }}</td><td>{{ d.order.client_label }}</td><td>{{ d.printed_at|date:"M d, H:i" }}</td><td class="num">{{ d.reprint_count }}</td>
-<td><form method="post" action="{% url 'documents:reprint' d.pk %}">{% csrf_token %}<button class="btn btn-sm">Reprint</button></form></td></tr>
-{% empty %}<tr><td colspan="7" class="muted">No printed documents yet.</td></tr>{% endfor %}</table></div>
+<div class="card"><div class="card-head"><div><h2>Reprint document</h2><p>Find a previously recorded document and create a marked copy.</p></div><span class="pill">{{ doc_count }} recorded documents</span></div>
+<form class="card-bar" method="get"><input type="hidden" name="tab" value="reprint"><div class="field-ic grow" style="max-width:420px">{% icon 'search' 15 %}<input name="q" value="{{ q }}" placeholder="Search type, document number, date, or client..."></div><span class="muted" style="margin-left:auto;font-size:12px">{{ docs|length }} results</span></form>
+<table><tr><th>Type</th><th>Document number</th><th>Date</th><th>Client / supplier</th><th class="num">Amount</th><th class="num">Action</th></tr>
+{% for d in docs %}<tr><td><div class="cellflex"><span class="chip">{% icon 'file' 14 %}</span><b>{{ d.get_doc_type_display }}</b></div></td><td><b>{{ d.number }}</b>{% if d.reprint_count %}<small class="muted" style="display:block">Reprinted {{ d.reprint_count }}×</small>{% endif %}</td><td class="muted">{{ d.printed_at|date:"M d, Y" }}</td>
+<td class="muted">{% if d.order %}{{ d.order.client_label }}{% else %}{{ d.purchase_order.supplier }}{% endif %}</td><td class="num">{% if d.order %}{{ d.order.total|peso }}{% else %}{{ d.purchase_order.total|peso }}{% endif %}</td>
+<td class="actcell"><form method="post" action="{% url 'documents:reprint' d.pk %}">{% csrf_token %}<button class="btn btn-outline btn-sm">Reprint</button></form></td></tr>
+{% empty %}<tr><td colspan="6"><div class="empty"><span class="tile-ic">{% icon 'file' 20 %}</span><b>No printed documents yet</b></div></td></tr>{% endfor %}</table></div>
 
 {% else %}
-<div class="row">
-<div class="grow">
-<form class="filters" method="get"><input type="hidden" name="tab" value="{{ tab }}"><select name="order" onchange="this.form.submit()" style="min-width:320px"><option value="">Choose a finalized order...</option>
-{% for o in orders %}<option value="{{ o.pk }}" {% if order and order.pk == o.pk %}selected{% endif %}>{{ o.number }} · {{ o.client_label }}</option>{% endfor %}</select><noscript><button class="btn btn-outline">Open</button></noscript></form>
-<div class="preform"><p class="muted" style="margin-top:0">Pre-printed form area (not printed)</p>
-{% if order %}
-<div style="display:flex;justify-content:space-between;gap:12px"><div class="slot">{{ order.client_name|default:order.client_business }}{% if order.client_tin %} / TIN {{ order.client_tin }}{% endif %}{% if order.client_address %} / {{ order.client_address }}{% endif %}</div><div class="slot">{{ order.finalized_at|date:"M d, Y" }}{% if order.po_number %} / P.O. {{ order.po_number }}{% endif %}</div></div>
-<div class="slot" style="margin:14px 0;min-height:160px"><table>{% for it in order.items.all %}<tr><td>{{ it.product.name }}</td><td class="num">{{ it.quantity }}</td>{% if tab == 'invoice' %}<td class="num">{{ it.unit_price|peso }}</td><td class="num">{{ it.line_total|peso }}</td>{% endif %}</tr>{% endfor %}</table></div>
-{% if tab == 'invoice' %}<div style="display:flex;justify-content:flex-end"><div class="slot">Total {{ order.total|peso }}</div></div>{% endif %}
-{% else %}<p class="muted">Choose an order to preview the document.</p>{% endif %}
-</div></div>
+<div class="card">
+<div class="card-head"><div><div class="eyebrow" style="margin:0">Pre-printed form</div><h2>{% if tab == 'po' %}Purchase Order{% elif tab == 'delivery' %}Delivery Receipt{% else %}Receipt / Invoice{% endif %} print preview</h2><p>Only the positioned variable data below will print onto the physical form.</p></div>
+<div class="chips">{% if tab == 'po' %}<button class="btn btn-outline" data-open="m-po">{% icon 'plus' 15 %} New purchase order</button>{% endif %}
+{% if order or po %}<button class="btn" data-open="m-docno">{% icon 'print' 15 %} Print</button>{% else %}<span class="btn disabled">{% icon 'print' 15 %} Print</span>{% endif %}</div></div>
+<form class="card-bar" method="get"><input type="hidden" name="tab" value="{{ tab }}">
+{% if tab == 'po' %}<select name="po" onchange="this.form.submit()" style="min-width:340px"><option value="">Choose a purchase order...</option>{% for x in pos %}<option value="{{ x.pk }}" {% if po and po.pk == x.pk %}selected{% endif %}>{{ x.number }} · {{ x.supplier }}</option>{% endfor %}</select>
+{% else %}<select name="order" onchange="this.form.submit()" style="min-width:340px"><option value="">Choose a finalized order...</option>{% for o in orders %}<option value="{{ o.pk }}" {% if order and order.pk == o.pk %}selected{% endif %}>#{{ o.number }} · {{ o.client_label }}</option>{% endfor %}</select>{% endif %}
+<noscript><button class="btn btn-outline">Open</button></noscript></form>
+<div class="formwrap"><div class="hint">{% icon 'alert' 13 %} Dotted outline is an alignment guide and will not print.</div>
+<div class="sheet">
+{% if po %}
+<div class="hd"><b>{{ po.supplier }}</b><span>{{ po.created_at|date:"M d, Y" }}</span></div>
+<div style="height:30px"></div>{% for it in po.items.all %}<div class="li"><span>{{ it.product.name }}</span><span>{{ it.quantity }}</span><span>{{ it.unit_cost|peso }}</span><b>{{ it.line_total|peso }}</b></div>{% endfor %}
+<div class="tot">{{ po.total|peso }}</div>
+{% elif order %}
+<div class="hd"><b>{{ order.client_name|default:order.client_business|default:"Walk-in customer" }}</b><span>{{ order.finalized_at|date:"M d, Y" }}{% if order.po_number %} · P.O. {{ order.po_number }}{% endif %}</span></div>
+<div style="height:30px"></div>{% for it in order.items.all %}<div class="li"><span>{{ it.product.name }}</span><span>{{ it.quantity }}</span>{% if tab == 'invoice' %}<span>{{ it.unit_price|peso }}</span><b>{{ it.line_total|peso }}</b>{% else %}<span></span><span></span>{% endif %}</div>{% endfor %}
+{% if tab == 'invoice' %}<div class="tot">{{ order.total|peso }}</div>{% endif %}
+{% else %}<div class="empty" style="padding-top:110px">{% if tab == 'po' %}Choose a purchase order, or create a new one, to preview the form.{% else %}Choose a finalized order to preview the document.{% endif %}</div>{% endif %}
+<div class="cap"><span>Client / Supplier</span><span>Date</span><span>Item description</span><span>Qty</span><span>Price</span><span>Total</span></div>
+</div></div></div>
 
-<div class="card" style="width:340px"><h2>Print</h2>
-{% if order %}
-<form method="post" action="{% url 'documents:print_doc' %}">{% csrf_token %}<input type="hidden" name="order" value="{{ order.pk }}"><input type="hidden" name="doc_type" value="{{ tab }}">
-<label>Doc number (serial)</label><input name="number" value="{{ number }}" autocomplete="off">
-{% if error %}<div class="err">{{ error }}</div>{% endif %}
-{% if existing %}<div class="help">Already printed as {{ existing.number }}. Use the Reprint tab.</div>{% endif %}
-<p><button class="btn" style="width:100%">Print</button></p></form>
-{% else %}<p class="muted">Select an order first.</p>{% endif %}
-</div></div>
+{% if order or po %}
+<dialog class="modal" id="m-docno" {% if error %}open{% endif %}><form method="post" action="{% url 'documents:print_doc' %}">{% csrf_token %}<input type="hidden" name="doc_type" value="{{ tab }}">{% if po %}<input type="hidden" name="po" value="{{ po.pk }}">{% else %}<input type="hidden" name="order" value="{{ order.pk }}">{% endif %}
+<div class="form-head"><span class="tile-ic">{% icon 'file' 18 %}</span><div class="grow"><h2>Record document number</h2><p>Enter the serial number printed on the physical form.</p></div><button class="x" data-close>{% icon 'x' 16 %}</button></div>
+<div class="form-body"><div class="slot" style="margin-bottom:12px;display:flex;justify-content:space-between"><span><small class="muted">{% if tab == 'po' %}Purchase Order{% elif tab == 'delivery' %}Delivery Receipt{% else %}Receipt / Invoice{% endif %}</small><br><b>{% if po %}{{ po.supplier }}{% else %}{{ order.client_label }}{% endif %}</b></span><span class="muted">{% if po %}{{ po.total|peso }}{% else %}{{ order.total|peso }}{% endif %}</span></div>
+<label>Serial / document number</label><input name="number" value="{{ number }}" autocomplete="off" placeholder="Enter number from pre-printed form" required>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}{% if existing %}<div class="help">Already printed as {{ existing.number }}. Use the Reprint tab.</div>{% endif %}
+<div class="help">This connects the inventory record to the numbered paper form for future reprints.</div></div>
+<div class="card-foot"><button class="btn btn-outline" data-close>Cancel</button><button class="btn">Save &amp; continue</button></div></form></dialog>
+{% endif %}
+
+{% if tab == 'po' %}
+<dialog class="modal" id="m-po" style="width:min(640px,96vw)"><form method="post" action="{% url 'documents:po_create' %}">{% csrf_token %}
+<div class="form-head"><span class="tile-ic">{% icon 'file' 18 %}</span><div class="grow"><h2>New purchase order</h2><p>Items that are low or out of stock are suggested for you.</p></div><button class="x" data-close>{% icon 'x' 16 %}</button></div>
+<div class="form-body"><label>Supplier</label><input name="supplier" required placeholder="e.g. Office Supply Co.">
+<datalist id="po-items">{% for p in products %}<option value="{{ p.code }} — {{ p.name }}">{% endfor %}</datalist>
+<table id="po-lines" style="margin-top:12px"><tr><th style="padding:8px 4px">Item</th><th style="padding:8px 4px;width:80px">Qty</th><th style="padding:8px 4px;width:100px">Unit cost</th><th style="width:34px"></th></tr>
+{% for p, n in suggested %}<tr><td style="padding:6px 4px"><input name="code" list="po-items" value="{{ p.code }} — {{ p.name }}"></td><td style="padding:6px 4px"><input name="qty" type="number" min="1" value="{{ n }}"></td><td style="padding:6px 4px"><input name="cost" type="number" step="0.01" min="0" value="{{ p.unit_cost }}"></td><td style="padding:6px 0"><button type="button" class="icobtn rm">{% icon 'x' 13 %}</button></td></tr>{% endfor %}</table>
+<button type="button" class="btn btn-ghost btn-sm" id="po-add" style="margin-top:8px">{% icon 'plus' 14 %} Add another item</button></div>
+<div class="card-foot"><button class="btn btn-outline" data-close>Cancel</button><button class="btn">Create purchase order</button></div></form></dialog>
+{% endif %}
 {% endif %}
 {% endblock %}
+{% block scripts %}{% if tab == 'po' %}<script>
+(function(){var t=document.getElementById('po-lines');if(!t)return;
+function wire(){t.querySelectorAll('.rm').forEach(function(b){b.onclick=function(){b.closest('tr').remove();};});}
+document.getElementById('po-add').onclick=function(){var r=t.insertRow(-1);r.innerHTML='<td style="padding:6px 4px"><input name="code" list="po-items" placeholder="Item code or name"></td><td style="padding:6px 4px"><input name="qty" type="number" min="1" value="1"></td><td style="padding:6px 4px"><input name="cost" type="number" step="0.01" min="0" placeholder="0.00"></td><td style="padding:6px 0"><button type="button" class="icobtn rm">×</button></td>';wire();};wire();})();
+</script>{% endif %}{% endblock %}

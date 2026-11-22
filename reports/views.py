@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib import messages
@@ -15,18 +15,19 @@ from catalog.models import Category, Product
 from core.models import AuditLog
 from sales.models import Order, OrderItem
 
-PERIODS = [('today', 'Today'), ('week', '7 days'), ('month', '30 days'), ('all', 'All time')]
+PERIODS = [('week', '7 days'), ('month', '30 days'), ('quarter', 'Quarter'), ('ytd', 'Year to date')]
 
 
 def _since(period):
     today = timezone.localdate()
-    return {'today': today, 'week': today - timedelta(days=6),
-            'month': today - timedelta(days=29)}.get(period)
+    quarter_start = date(today.year, 3 * ((today.month - 1) // 3) + 1, 1)
+    return {'week': today - timedelta(days=6), 'month': today - timedelta(days=29),
+            'quarter': quarter_start, 'ytd': date(today.year, 1, 1)}.get(period, today - timedelta(days=6))
 
 
 def _transactions(request, ctx):
     f = request.GET
-    qs = Order.objects.exclude(status=Order.DRAFT).prefetch_related('items', 'returns', 'documents')
+    qs = Order.objects.exclude(status=Order.DRAFT).select_related('created_by', 'created_by__profile').prefetch_related('items', 'returns', 'documents')
     d1, d2 = parse_date(f.get('from', '')), parse_date(f.get('to', ''))
     if d1:
         qs = qs.filter(finalized_at__date__gte=d1)
@@ -37,7 +38,7 @@ def _transactions(request, ctx):
         cond = (Q(client_name__icontains=q) | Q(client_business__icontains=q)
                 | Q(po_number__icontains=q) | Q(documents__number__icontains=q))
         digits = ''.join(ch for ch in q if ch.isdigit())
-        if digits and q.upper().startswith('SO'):
+        if digits and q.upper().startswith(('SL', 'SO')):
             cond |= Q(pk=int(digits))
         qs = qs.filter(cond).distinct()
     status = f.get('status', '')
@@ -59,12 +60,28 @@ def _sales(request, ctx):
         orders = orders.filter(finalized_at__date__gte=since)
         items = items.filter(order__finalized_at__date__gte=since)
     rows = list(orders.prefetch_related('items').order_by('-finalized_at'))
-    by_day = defaultdict(Decimal)
+    ctx['range_label'] = dict(PERIODS).get(ctx['period'], '')
+    period = ctx['period']
+    by_bucket = defaultdict(Decimal)
+
+    def bucket(d):
+        if period == 'week':
+            return d, d.strftime('%a')
+        if period == 'month':
+            start = since + timedelta(days=((d - since).days // 3) * 3)
+            return start, start.strftime('%b %d').replace(' 0', ' ')
+        if period == 'quarter':
+            start = since + timedelta(days=((d - since).days // 7) * 7)
+            return start, start.strftime('%b %d').replace(' 0', ' ')
+        return date(d.year, d.month, 1), d.strftime('%b')
+    labels = {}
     for o in rows:
-        by_day[timezone.localtime(o.finalized_at).date()] += o.total
-    peak = max(by_day.values(), default=Decimal('0'))
-    chart = [{'label': d.strftime('%b %d'), 'value': v, 'pct': int(v / peak * 100) if peak else 0}
-             for d, v in sorted(by_day.items())]
+        key, label = bucket(timezone.localtime(o.finalized_at).date())
+        by_bucket[key] += o.total
+        labels[key] = label
+    peak = max(by_bucket.values(), default=Decimal('0'))
+    chart = [{'label': labels[k], 'value': v, 'pct': max(int(v / peak * 100), 3) if peak else 0}
+             for k, v in sorted(by_bucket.items())]
     top = (items.values('product__name').annotate(qty=Sum(F('quantity') - F('returned_qty')))
            .order_by('-qty').first())
     ctx.update({'rows': rows[:200], 'order_count': len(rows), 'chart': chart,
@@ -97,11 +114,30 @@ def _inventory(request, ctx):
         cats.append(row)
         for k in totals:
             totals[k] += row[k]
-    ctx.update({'cats': cats, 'totals': totals})
+    peak = max((c['value'] for c in cats), default=0)
+    for c in cats:
+        c['pct'] = int(c['value'] / peak * 100) if peak else 0
+        c['lowall'] = c['low'] + c['depleted']
+    ctx.update({'cats': cats, 'totals': totals, 'cat_count': len(cats), 'low_all': totals['low'] + totals['depleted']})
 
 
-def _log(request, ctx, own_only):
-    logs = AuditLog.objects.select_related('user')
+AREAS = [('Sales', ('sale', 'payment', 'draft', 'return', 'exchange', 'void', 'maya')),
+         ('Documents', ('document', 'invoice', 'receipt', 'purchase order', 'printed', 'reprint')),
+         ('Access', ('logged', 'registration', 'staff', 'password', 'account', 'approved', 'rejected', 'login')),
+         ('Inventory', ('stock', 'incoming', 'adjust', 'product', 'item', 'categor', 'import', 'export', 'backup', 'restore', 'data'))]
+KINDS = [('SALE', 'cart', ('sale', 'payment', 'draft', 'maya')), ('VOID', 'alert', ('void',)),
+         ('RETURN', 'refresh', ('return', 'exchange')), ('DOCUMENT', 'file', ('document', 'invoice', 'receipt', 'purchase order', 'printed', 'reprint')),
+         ('STOCK', 'download', ('stock', 'incoming', 'adjust', 'product', 'categor', 'import')),
+         ('ACCESS', 'user', ('logged', 'registration', 'staff', 'password', 'account')), ('DATA', 'database', ('export', 'backup', 'restore'))]
+
+
+def _classify(action, table):
+    a = action.lower()
+    return next((name for name, keys in table if any(k in a for k in keys)), None)
+
+
+def _log(request, ctx, own_only, feed=False):
+    logs = AuditLog.objects.select_related('user', 'user__profile')
     if own_only:
         logs = logs.filter(user=request.user)
     else:
@@ -113,24 +149,41 @@ def _log(request, ctx, own_only):
     q = request.GET.get('q', '').strip()
     if q:
         logs = logs.filter(Q(action__icontains=q) | Q(detail__icontains=q))
-    ctx.update({'logs': logs[:200], 'q': q})
+    rows = list(logs[:500])
+    for l in rows:
+        l.area = _classify(l.action, AREAS) or 'Inventory'
+        kind = next(((n, i) for n, i, keys in KINDS if any(k in l.action.lower() for k in keys)), ('ACTIVITY', 'clock'))
+        l.kind, l.icon = kind
+    area = request.GET.get('area', 'all')
+    ctx['counts'] = {'all': len(rows), **{n: sum(1 for l in rows if l.area == n) for n, _ in AREAS}}
+    ctx['area'] = area
+    ctx['areas'] = [('all', 'All')] + [(n, n) for n in ('Sales', 'Inventory', 'Documents', 'Access')]
+    if area != 'all':
+        rows = [l for l in rows if l.area == area]
+    if feed:
+        today = timezone.localdate()
+        cutoff = today - timedelta(days=6)
+        rows = [l for l in rows if timezone.localtime(l.created_at).date() >= cutoff]
+        for l in rows:
+            d = timezone.localtime(l.created_at).date()
+            l.when = timezone.localtime(l.created_at).strftime('%I:%M %p').lstrip('0') if d == today else (
+                'Yesterday' if d == today - timedelta(days=1) else d.strftime('%b %d'))
+    ctx.update({'logs': rows[:200], 'q': q})
 
 
 @login_required
 def index(request):
     tab = request.GET.get('tab', 'transactions')
-    ctx = {'tab': tab, 'periods': PERIODS, 'period': request.GET.get('period', 'week')}
+    ctx = {'tab': tab, 'periods': PERIODS, 'period': request.GET.get('period', 'month')}
     if tab == 'audit' and not request.user.profile.is_admin:
         messages.error(request, 'The Audit Log is for the Admin / Owner only.')
         return redirect('/reports/?tab=transactions')
     if tab == 'sales':
         _sales(request, ctx)
-    elif tab == 'stock':
-        _stock(request, ctx)
     elif tab == 'inventory':
         _inventory(request, ctx)
     elif tab == 'activity':
-        _log(request, ctx, own_only=True)
+        _log(request, ctx, own_only=not request.user.profile.is_admin, feed=True)
     elif tab == 'audit':
         _log(request, ctx, own_only=False)
     else:

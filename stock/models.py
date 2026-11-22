@@ -15,6 +15,8 @@ class StockMovement(models.Model):
     change = models.IntegerField()
     balance_after = models.IntegerField()
     reference = models.CharField(max_length=60, blank=True)
+    supplier = models.CharField(max_length=120, blank=True)
+    received_on = models.DateField(null=True, blank=True)
     note = models.CharField(max_length=255, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
                              on_delete=models.SET_NULL, related_name='stock_movements')

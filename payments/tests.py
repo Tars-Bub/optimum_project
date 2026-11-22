@@ -308,7 +308,11 @@ class PaymentViewTests(Base):
         with mock.patch('payments.services.maya.create_checkout', side_effect=maya.MayaError('Maya rejected it (401).')):
             resp = self.client.post(reverse('payments:maya_pay', args=[self.order.pk]), follow=True)
         self.assertContains(resp, 'Maya rejected it')
-        self.assertEqual(MayaPayment.objects.count(), 0)
+        # the failed attempt is kept (as Failed, never counted as paid) so the Maya Payments list shows it
+        failed = MayaPayment.objects.get()
+        self.assertEqual((failed.status, failed.maya_status), ('failed', 'NOT_CREATED'))
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.amount_paid, 0)
 
     def test_draft_orders_cannot_be_paid(self):
         self.login()

@@ -4,6 +4,7 @@ from . import views
 
 app_name = 'payments'
 urlpatterns = [
+    path('maya/<int:pk>/sms/', views.sms_link, name='maya_sms'),
     path('', views.index, name='index'),
     path('maya/pay/<int:order_id>/', views.pay, name='maya_pay'),
     path('maya/<int:pk>/', views.detail, name='maya_detail'),
