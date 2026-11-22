@@ -1,0 +1,12 @@
+{% extends 'auth_base.html' %}{% load ui %}
+{% block title %}Payment · Optimum{% endblock %}
+{% block head %}{% if waiting %}<meta http-equiv="refresh" content="6">{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if payment.status == 'paid' %}Payment received{% elif payment.status == 'pending' %}{% if result == 'cancel' %}Checkout cancelled{% else %}Checking your payment{% endif %}{% elif payment.status == 'failed' %}Payment failed{% elif payment.status == 'expired' %}Checkout expired{% else %}Payment cancelled{% endif %}</h1>
+<p style="text-align:center">{{ payment.order.number }} · {{ payment.amount|peso }}</p>
+{% if payment.status == 'paid' %}<p class="muted" style="text-align:center">Thank you. Your payment was confirmed by Maya.</p>
+{% elif payment.status == 'pending' %}
+  {% if result == 'cancel' %}<p class="muted" style="text-align:center">You closed the checkout and nothing was charged. Ask the cashier for a new link if you still want to pay.</p>
+  {% else %}<p class="muted" style="text-align:center">{% if unverified %}We could not reach Maya just now. {% endif %}Waiting for Maya to confirm. This page refreshes by itself.</p>{% endif %}
+{% else %}<p class="muted" style="text-align:center">Nothing was charged. Please ask the cashier for a new checkout link.</p>{% endif %}
+{% endblock %}

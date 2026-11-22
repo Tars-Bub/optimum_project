@@ -30,8 +30,11 @@ and run `python manage.py createsuperuser`.
 ## Tests
 
 ```bash
-python manage.py test
+python manage.py test            # all unit and integration tests, including payments
+python manage.py test payments   # Maya integration only
 ```
+
+API response tests (Postman / Newman) are in `postman/`. See `docs/api-integration.md`.
 
 ## Screens (from the wireframe) and where the code lives
 
@@ -44,6 +47,7 @@ python manage.py test
 | Sales: cart, drafts, payment, finalize | `sales` | 3.0 |
 | Returns & Voids | `sales` | 5.0 |
 | Documents: Invoice, Delivery Receipt, Reprint | `documents` | 6.0 |
+| Maya Payments: Pay with Maya, checkout link and QR, status | `payments` | 3.0 |
 | Dashboard | `core` | 7.0 |
 | Reports & Search: Transactions, Sales, Stock, Inventory Summary, Activity, Audit Log | `reports` (+ `core.AuditLog`) | 7.0 |
 
@@ -66,6 +70,15 @@ low-stock alerts (computed live) and reports (D7).
   Adjust the millimetre positions at the top of `templates/documents/print.html` to match your form
   (the paper size is set to A5 landscape; change `@page` for other forms).
 
+## Pay with Maya (external API)
+
+Finalized sales with a balance can be paid through **Maya Checkout** (card, Maya wallet or QR). The sale is marked paid
+only after Maya confirms the payment with its API. Setup, flow, safety rules and tests: `docs/api-integration.md`.
+
+1. Create sandbox keys in Maya Manager, then copy `.env.example` to `.env` and fill in `MAYA_PUBLIC_KEY` and `MAYA_SECRET_KEY`.
+2. Run the app, open **Reports & Search → Transactions** and click **Pay with Maya** on an unpaid sale.
+3. Never commit keys. `.env` is git-ignored. On the cloud host set them as environment variables.
+
 ## Limits to know about
 
 - "Total sales" is the gross value of finalized orders; refunds from returns are shown on each order but
@@ -78,7 +91,7 @@ low-stock alerts (computed live) and reports (D7).
 
 - `Dockerfile` builds the web container (Gunicorn + WhiteNoise for static files).
   Environment: `DJANGO_DEBUG=0`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
-  `DJANGO_SECURE=1` (behind HTTPS), and `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` for MySQL.
+  `DJANGO_SECURE=1` (behind HTTPS), `MAYA_PUBLIC_KEY`, `MAYA_SECRET_KEY`, `MAYA_BASE_URL`, `SITE_URL` (public address, needed for the Maya webhook), and `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` for MySQL.
 - `/health/` returns `{"status": "ok"}` for uptime checks.
 - `.github/workflows/ci.yml` runs checks and tests on pull requests, and builds the image on pushes.
 - `docker-compose.yml` starts the app with MySQL locally. The MySQL setup was written but not run
@@ -88,3 +101,14 @@ low-stock alerts (computed live) and reports (D7).
 
 `study-guides/` has one guide per area (core and deployment, UI/UX, accounts-products-stock,
 sales-and-documents, reports-and-QA) and `docs/database-schema.md` lists every table and key.
+
+## Deploy free on Render
+
+1. Push this folder to a GitHub repository (`.env` and `db.sqlite3` are git-ignored).
+2. On https://render.com choose **New → Blueprint**, pick the repo. `render.yaml` sets everything up.
+3. In the service's **Environment** tab fill `MAYA_PUBLIC_KEY`, `MAYA_SECRET_KEY` and `SITE_URL` (your `https://<name>.onrender.com` address).
+4. Open the `onrender.com` link and log in with the demo accounts above (change the passwords).
+
+Free plan notes: the site sleeps after about 15 minutes idle (the first visit then takes ~1 minute), and the SQLite file
+is wiped on each deploy or restart, so the demo data is re-created automatically by `build.sh`. For data that must
+persist, create a Render Postgres database and set its `DATABASE_URL` on the web service (free ones expire after 30 days).

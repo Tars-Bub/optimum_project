@@ -1,0 +1,741 @@
+{
+  "info": {
+    "name": "Optimum - Maya integration tests",
+    "description": "API response tests for the Maya Checkout integration.\n\nFolder 1 calls the Maya sandbox directly (needs maya_public_key and maya_secret_key).\nFolders 2 and 3 test this app and need no Maya keys.\n\nFill the secret values in the environment only. Never commit them.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Maya sandbox API",
+      "item": [
+        {
+          "name": "1.1 Create checkout (public key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{maya_base}}/checkout/v1/checkouts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"totalAmount\": {\n    \"value\": 285,\n    \"currency\": \"PHP\"\n  },\n  \"items\": [\n    {\n      \"name\": \"Copy Paper, Letter\",\n      \"code\": \"PAP-1001\",\n      \"quantity\": 1,\n      \"amount\": {\n        \"value\": 285\n      },\n      \"totalAmount\": {\n        \"value\": 285\n      }\n    }\n  ],\n  \"redirectUrl\": {\n    \"success\": \"{{app_base}}/payments/maya/return/{{reference}}/?result=success\",\n    \"failure\": \"{{app_base}}/payments/maya/return/{{reference}}/?result=failure\",\n    \"cancel\": \"{{app_base}}/payments/maya/return/{{reference}}/?result=cancel\"\n  },\n  \"requestReferenceNumber\": \"{{reference}}\",\n  \"metadata\": {\n    \"source\": \"postman\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{maya_public_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Creates a sandbox checkout. Basic auth: public key as username, blank password. Saves checkout_id for the next requests."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('reference', 'POSTMAN-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Responds within 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "const body = pm.response.json();",
+                  "pm.test('Has a checkoutId', () => pm.expect(body.checkoutId).to.be.a('string').and.not.empty);",
+                  "pm.test('Has an https redirectUrl', () => pm.expect(body.redirectUrl).to.be.a('string').and.match(/^https:\\/\\//));",
+                  "if (body.checkoutId) { pm.collectionVariables.set('checkout_id', body.checkoutId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Create checkout with a wrong key (negative test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{maya_base}}/checkout/v1/checkouts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"totalAmount\": {\n    \"value\": 285,\n    \"currency\": \"PHP\"\n  },\n  \"items\": [\n    {\n      \"name\": \"Copy Paper, Letter\",\n      \"code\": \"PAP-1001\",\n      \"quantity\": 1,\n      \"amount\": {\n        \"value\": 285\n      },\n      \"totalAmount\": {\n        \"value\": 285\n      }\n    }\n  ],\n  \"redirectUrl\": {\n    \"success\": \"{{app_base}}/payments/maya/return/{{reference}}/?result=success\",\n    \"failure\": \"{{app_base}}/payments/maya/return/{{reference}}/?result=failure\",\n    \"cancel\": \"{{app_base}}/payments/maya/return/{{reference}}/?result=cancel\"\n  },\n  \"requestReferenceNumber\": \"{{reference}}\",\n  \"metadata\": {\n    \"source\": \"postman\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "pk-this-key-is-not-valid",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Proves the API refuses an invalid key."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rejected with 401 or 403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403]));",
+                  "pm.test('No checkout was created', () => pm.expect(pm.response.text()).to.not.include('checkoutId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 Create checkout with an empty body (negative test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{maya_base}}/checkout/v1/checkouts",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{maya_public_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Proves the API validates the request body."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rejected as a bad request', () => pm.expect(pm.response.code).to.be.oneOf([400, 422]));",
+                  "pm.test('No checkout was created', () => pm.expect(pm.response.text()).to.not.include('checkoutId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 Retrieve payment by ID (secret key)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{maya_base}}/payments/v1/payments/{{checkout_id}}",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{maya_secret_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Uses the SECRET key. Tighten the first test to 200 once you have completed a sandbox payment for this checkout."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200, or 404 while the customer has not opened the checkout', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));",
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json(); const rec = Array.isArray(data) ? data[0] : data;",
+                  "  pm.test('Record has a status', () => pm.expect(rec.status || rec.paymentStatus).to.be.a('string'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 Retrieve payment by request reference number (secret key)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{maya_base}}/payments/v1/payment-rrns/{{reference}}",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{maya_secret_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200, or 404 while there is no payment yet', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.6 Retrieve payment status (public key)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{maya_base}}/payments/v1/payments/{{checkout_id}}/status",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{maya_public_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200, or 404 while the customer has not opened the checkout', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.7 Retrieve payment with a wrong secret key (negative test)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{maya_base}}/payments/v1/payments/{{checkout_id}}",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "sk-this-key-is-not-valid",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rejected with 401 or 403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.8 List registered webhooks (secret key)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{maya_base}}/payments/v1/webhooks",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{maya_secret_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Shows which webhook URLs are registered for this merchant."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Body is a list', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.9 (optional) Register the PAYMENT_SUCCESS webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{maya_base}}/payments/v1/webhooks",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"PAYMENT_SUCCESS\",\n  \"callbackUrl\": \"{{public_app_url}}/payments/maya/webhook/\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{maya_secret_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Only meaningful with a public https address (the deployed site). Maya cannot call localhost."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const publicUrl = pm.variables.get('public_app_url');",
+                  "if (!publicUrl) {",
+                  "  pm.test('Skipped: set public_app_url to a public https address to register the webhook', () => pm.expect(true).to.be.true);",
+                  "} else {",
+                  "  pm.test('Registered, or already registered', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Optimum app (no login)",
+      "item": [
+        {
+          "name": "2.1 Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{app_base}}/health/",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns {\"status\": \"ok\"}', () => pm.expect(pm.response.json()).to.eql({status: 'ok'}));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Webhook with an unknown reference is ignored",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{app_base}}/payments/maya/webhook/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"unknown-id\",\n  \"requestReferenceNumber\": \"NOT-A-REAL-REFERENCE\",\n  \"status\": \"PAYMENT_SUCCESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "A forged success for an order we never created changes nothing. No CSRF token is needed: Maya cannot send one."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Marked as ignored', () => pm.expect(pm.response.json().status).to.eql('ignored'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Webhook with invalid JSON is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{app_base}}/payments/maya/webhook/",
+            "body": {
+              "mode": "raw",
+              "raw": "this is not json{"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Webhook only accepts POST",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{app_base}}/payments/maya/webhook/",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 405', () => pm.response.to.have.status(405));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 Return page for an unknown reference",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{app_base}}/payments/maya/return/NOT-A-REAL-REFERENCE/",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 Maya Payments list needs a login",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{app_base}}/payments/",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Redirected (302)', () => pm.response.to.have.status(302));",
+                  "pm.test('Sent to the login page', () => pm.expect(pm.response.headers.get('Location')).to.include('/accounts/login/'));"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "followRedirects": false
+          }
+        },
+        {
+          "name": "2.7 Payment status endpoint needs a login",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{app_base}}/payments/maya/1/status/",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Redirected (302)', () => pm.response.to.have.status(302));",
+                  "pm.test('Sent to the login page', () => pm.expect(pm.response.headers.get('Location')).to.include('/accounts/login/'));"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "followRedirects": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Optimum app (logged in)",
+      "item": [
+        {
+          "name": "3.1 Open the login page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{app_base}}/accounts/login/",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.text().match(/name=\"csrfmiddlewaretoken\" value=\"([^\"]+)\"/);",
+                  "pm.test('The login form carries a CSRF token', () => pm.expect(m).to.not.be.null);",
+                  "pm.collectionVariables.set('csrf', m ? m[1] : '');",
+                  "pm.test('Django set the CSRF cookie', () => pm.expect(pm.response.headers.get('Set-Cookie')).to.include('csrftoken'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Log in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Referer",
+                "value": "{{app_base}}/accounts/login/"
+              }
+            ],
+            "url": "{{app_base}}/accounts/login/",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "csrfmiddlewaretoken",
+                  "value": "{{csrf}}",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "{{app_user}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{app_password}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Logged in and landed on the dashboard', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.text()).to.include('Dashboard');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Maya Payments list opens when logged in",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{app_base}}/payments/",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Shows the Maya Payments page', () => pm.expect(pm.response.text()).to.include('Maya Payments'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Pay page for an order that does not exist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{app_base}}/payments/maya/pay/999999/",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "reference",
+      "value": ""
+    },
+    {
+      "key": "checkout_id",
+      "value": ""
+    },
+    {
+      "key": "csrf",
+      "value": ""
+    }
+  ]
+}

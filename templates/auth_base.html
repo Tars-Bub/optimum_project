@@ -1,7 +1,7 @@
 {% load static %}<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Optimum{% endblock %}</title>
-<link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<link rel="stylesheet" href="{% static 'css/app.css' %}">{% block head %}{% endblock %}</head>
 <body><div class="auth"><div>
 {% if messages %}<div class="messages" style="width:380px;margin:0 auto 12px">{% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}</div>{% endif %}
 <div class="card"><div class="brand">OPTIMUM</div>{% block content %}{% endblock %}</div>

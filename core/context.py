@@ -29,6 +29,7 @@ def layout(request):
         ('Returns & Voids', 'sales:returns_index', ('sales:returns',), 0),
         ('Documents', 'documents:index', ('documents:',), 0),
         ('Reports & Search', 'reports:index', ('reports:',), 0),
+        ('Maya Payments', 'payments:index', ('payments:',), 0),
     ]
     if is_admin:
         items.append(('Staff Accounts (Admin)', 'accounts:staff', ('accounts:staff',), 0))

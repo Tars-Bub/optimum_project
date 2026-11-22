@@ -26,7 +26,7 @@
 {% for o in orders %}<tr><td>{{ o.number }}</td><td>{{ o.finalized_at|date:"M d, Y H:i" }}</td><td>{{ o.client_label }}</td>
 <td>{% for d in o.documents.all %}{{ d.number }}{% if not forloop.last %}, {% endif %}{% endfor %}</td><td class="num">{{ o.total|peso }}</td>
 <td><span class="badge {{ o.payment_status|lower }}">{{ o.payment_status }}</span></td><td><span class="badge {{ o.status_label|lower }}">{{ o.status_label }}</span></td>
-<td>{% if o.status == 'finalized' and o.payment_status != 'Paid' %}<form class="inline" method="post" action="{% url 'sales:payment_add' o.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><input name="amount" placeholder="{{ o.balance|floatformat:2 }}" style="width:90px"> <button class="btn btn-sm">Add</button></form>{% endif %}</td></tr>
+<td>{% if o.status == 'finalized' and o.payment_status != 'Paid' %}<form class="inline" method="post" action="{% url 'sales:payment_add' o.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><input name="amount" placeholder="{{ o.balance|floatformat:2 }}" style="width:90px"> <button class="btn btn-sm">Add</button></form> <a class="btn btn-sm btn-outline" href="{% url 'payments:maya_pay' o.pk %}">Pay with Maya</a>{% endif %}</td></tr>
 {% empty %}<tr><td colspan="8" class="muted">No transactions found.</td></tr>{% endfor %}</table></div>
 
 {% elif tab == 'sales' %}

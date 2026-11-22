@@ -1,0 +1,11 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Maya Payments · Optimum{% endblock %}
+{% block content %}
+<h1>Maya Payments</h1>
+<div class="card">
+<table><tr><th>When</th><th>Order</th><th>Client</th><th class="num">Amount</th><th>Status</th><th>Maya status</th><th>Reference</th><th></th></tr>
+{% for p in payments %}<tr><td>{{ p.created_at|date:"M d, H:i" }}</td><td>{{ p.order.number }}</td><td>{{ p.order.client_label }}</td><td class="num">{{ p.amount|peso }}</td>
+<td><span class="badge {{ p.status }}">{{ p.get_status_display }}</span></td><td class="muted">{{ p.maya_status|default:"-" }}</td><td class="muted">{{ p.reference }}</td>
+<td><a href="{% url 'payments:maya_detail' p.pk %}">Open</a></td></tr>
+{% empty %}<tr><td colspan="8" class="muted">No Maya payments yet. Open a finalized sale under Reports &amp; Search and choose Pay with Maya.</td></tr>{% endfor %}</table></div>
+{% endblock %}

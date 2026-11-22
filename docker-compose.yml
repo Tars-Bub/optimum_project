@@ -23,3 +23,7 @@ services:
       DB_PASSWORD: optimum
       DB_HOST: db
       DJANGO_DEBUG: "1"
+      MAYA_PUBLIC_KEY: ${MAYA_PUBLIC_KEY:-}
+      MAYA_SECRET_KEY: ${MAYA_SECRET_KEY:-}
+      MAYA_BASE_URL: ${MAYA_BASE_URL:-https://pg-sandbox.paymaya.com}
+      SITE_URL: ${SITE_URL:-}

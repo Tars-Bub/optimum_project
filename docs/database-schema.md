@@ -118,6 +118,23 @@ Unique together: (order, product)
 
 Unique together: (doc_type, number)
 
+## `payments_mayapayment`
+
+| Column | Type | Null | Key / rule |
+|---|---|---|---|
+| `id` | BigAutoField | no | PK |
+| `order_id` | ForeignKey | no | FK to `sales_order`.id (PROTECT) |
+| `reference` | varchar(64) | no | unique; our request reference number sent to Maya |
+| `checkout_id` | varchar(64) | no | indexed; Maya's checkout / payment id |
+| `checkout_url` | varchar(500) | no | link and QR the customer pays with |
+| `amount` | decimal(12,2) | no | amount asked from the customer |
+| `status` | varchar(10) | no | one of: pending, paid, failed, expired, cancelled; default 'pending' |
+| `maya_status` | varchar(40) | no | last raw status from Maya, for example PAYMENT_SUCCESS |
+| `note` | varchar(200) | no | warnings such as an amount mismatch |
+| `created_by_id` | ForeignKey | yes | FK to `auth_user`.id (SET_NULL) |
+| `created_at` | DateTimeField | no |  |
+| `paid_at` | DateTimeField | yes |  |
+
 ## `core_auditlog`
 
 | Column | Type | Null | Key / rule |
@@ -146,6 +163,8 @@ Unique together: (doc_type, number)
 | `sales_returnline` | `item` | `sales_orderitem` | PROTECT |
 | `documents_document` | `order` | `sales_order` | PROTECT |
 | `documents_document` | `printed_by` | `auth_user` | SET_NULL |
+| `payments_mayapayment` | `order` | `sales_order` | PROTECT |
+| `payments_mayapayment` | `created_by` | `auth_user` | SET_NULL |
 | `core_auditlog` | `user` | `auth_user` | SET_NULL |
 
 `PROTECT` means the database refuses to delete a row that others still use (for example a product that

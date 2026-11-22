@@ -122,8 +122,14 @@ def cart_save(request):
         request.session.pop('cart_order', None)
         audit(request.user, 'Sale finalized', f'{order.number} {order.total}')
         link = reverse('documents:index') + f'?tab=invoice&order={order.pk}'
-        messages.success(request, format_html(
-            '{} finalized. <a href="{}">Print the invoice</a>.', order.number, link))
+        if order.balance > 0:
+            messages.success(request, format_html(
+                '{} finalized. <a href="{}">Print the invoice</a> or '
+                '<a href="{}">pay the {} balance with Maya</a>.',
+                order.number, link, reverse('payments:maya_pay', args=[order.pk]), order.balance))
+        else:
+            messages.success(request, format_html(
+                '{} finalized. <a href="{}">Print the invoice</a>.', order.number, link))
         return redirect('sales:index')
     return redirect('sales:index')
 

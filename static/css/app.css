@@ -84,3 +84,6 @@ input[type=radio],input[type=checkbox]{width:auto}
 .auth h1{text-align:center}
 .auth .brand{text-align:center;color:var(--text);padding-bottom:6px}
 @media(max-width:900px){.sidebar{display:none}.row{flex-direction:column}.cart{width:100%}.cards,.tiles{grid-template-columns:1fr 1fr}}
+
+.badge.failed,.badge.expired,.badge.cancelled{background:#f8e1e1;color:var(--bad)}
+.msg.info{border-color:#b9c9d6;background:#f1f6fa}
