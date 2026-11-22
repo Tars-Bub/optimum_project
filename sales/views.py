@@ -13,7 +13,7 @@ from stock.services import StockError
 from .models import Order, OrderItem, ReturnRecord
 from .services import finalize_order, get_cart, parse_money, process_return, void_order
 
-CLIENT_FIELDS = ['client_name', 'client_business', 'client_tin', 'client_address',
+CLIENT_FIELDS = ['client_name', 'client_phone', 'client_business', 'client_tin', 'client_address',
                  'po_number', 'payment_terms']
 
 
@@ -25,7 +25,7 @@ def index(request):
         request.session['cart_order'] = draft.pk
         return redirect('sales:index')
     tab = request.GET.get('tab', 'new')
-    ctx = {'tab': tab}
+    ctx = {'tab': tab, 'draft_count': Order.objects.filter(status=Order.DRAFT).annotate(n=Count('items')).filter(n__gt=0).count()}
     if tab == 'drafts':
         ctx['drafts'] = (Order.objects.filter(status=Order.DRAFT)
                          .annotate(n=Count('items')).filter(n__gt=0)
@@ -36,7 +36,7 @@ def index(request):
         if q:
             products = products.filter(Q(name__icontains=q) | Q(code__icontains=q))
         cart = get_cart(request)
-        ctx.update({'q': q, 'products': products[:40], 'cart': cart,
+        ctx.update({'q': q, 'products': products[:40], 'avail': products.filter(quantity__gt=0).count(), 'cart': cart,
                     'cart_items': cart.items.select_related('product') if cart else []})
     return render(request, 'sales/index.html', ctx)
 
@@ -121,9 +121,20 @@ def cart_save(request):
             return redirect('sales:index')
         request.session.pop('cart_order', None)
         audit(request.user, 'Sale finalized', f'{order.number} {order.total}')
+        if order.client_phone:
+            from notifications.services import send_receipt
+            sms = send_receipt(order, request.user)
+            if sms and sms.status != 'sent':
+                messages.warning(request, f'The SMS receipt was not sent: {sms.detail}')
         link = reverse('documents:index') + f'?tab=invoice&order={order.pk}'
-        messages.success(request, format_html(
-            '{} finalized. <a href="{}">Print the invoice</a>.', order.number, link))
+        if order.balance > 0:
+            messages.success(request, format_html(
+                '{} finalized. <a href="{}">Print the invoice</a> or '
+                '<a href="{}">pay the {} balance with Maya</a>.',
+                order.number, link, reverse('payments:maya_pay', args=[order.pk]), order.balance))
+        else:
+            messages.success(request, format_html(
+                '{} finalized. <a href="{}">Print the invoice</a>.', order.number, link))
         return redirect('sales:index')
     return redirect('sales:index')
 
@@ -218,6 +229,9 @@ def returns_process(request):
 @login_required
 @require_POST
 def returns_void(request):
+    if not request.user.profile.is_admin:
+        messages.error(request, 'Voiding a sale is restricted to the Admin / Owner.')
+        return redirect('/sales/returns/?tab=void')
     order = get_object_or_404(Order, pk=request.POST.get('order'), status=Order.FINAL)
     reason = request.POST.get('reason', '').strip()
     if not reason:

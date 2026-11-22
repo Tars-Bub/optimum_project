@@ -1,0 +1,47 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Data · Optimum{% endblock %}
+{% block content %}
+{% include 'partials/head.html' with eyebrow='Administration' title='Data Management' sub='Import, export, and maintain business data.' %}
+<div class="tabs"><a class="tab {% if tab == 'import' %}active{% endif %}" href="?tab=import">Import</a><a class="tab {% if tab == 'export' %}active{% endif %}" href="?tab=export">Export</a><a class="tab {% if tab == 'backup' %}active{% endif %}" href="?tab=backup">Back up</a><a class="tab {% if tab == 'restore' %}active{% endif %}" href="?tab=restore">Restore</a></div>
+
+{% if tab == 'import' %}
+{% if preview %}
+<div class="card"><div class="card-head"><div><div class="eyebrow" style="margin:0">Validate rows</div><h2>{{ preview.file }}</h2><p>Check each row. Rows with a problem are skipped.</p></div></div>
+<table><tr><th>Row</th><th>Item code</th><th>Item</th><th class="num">Quantity</th><th>Result</th></tr>
+{% for r in preview.rows %}<tr><td class="muted">{{ r.row }}</td><td>{{ r.code }}</td><td>{{ r.name|default:"-" }}</td><td class="num">{{ r.qty }}</td><td>{% if r.error %}<span class="badge bad">{{ r.error }}</span>{% else %}<span class="badge ok">Ready</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="5" class="muted">The sheet has no data rows.</td></tr>{% endfor %}</table>
+<form method="post" action="{% url 'data:import_confirm' %}" class="card-foot">{% csrf_token %}<button class="btn btn-outline" name="cancel" value="1">Cancel</button><button class="btn">{% icon 'check' 15 %} Import valid rows</button></form></div>
+{% else %}
+<div class="card"><div class="form-head" style="border:0"><span class="tile-ic">{% icon 'file' 20 %}</span><div><div class="eyebrow">Excel exchange</div><h2>Import stock from Excel</h2><p>Upload an .xlsx file, match its columns, and validate rows before importing.</p></div></div>
+<form method="post" action="{% url 'data:import_upload' %}" enctype="multipart/form-data" id="upform">{% csrf_token %}
+<div class="drop"><span class="tile-ic">{% icon 'download' 20 %}</span><b style="display:block">Drop an Excel file here</b><p class="muted" style="margin:4px 0 12px;font-size:12px">or click to choose a file from your computer</p>
+<input type="file" name="file" accept=".xlsx" id="file" style="max-width:280px;margin:0 auto"><p class="help"><span class="pill">.xlsx files up to 10 MB</span></p>
+<p class="help">First row needs an <b>Item code</b> column and a <b>Quantity</b> column. Each row is added as incoming stock.</p></div></form></div>
+{% endif %}
+
+{% elif tab == 'export' %}
+<div class="card"><div class="form-head" style="border:0"><span class="tile-ic">{% icon 'download' 20 %}</span><div><div class="eyebrow">Excel exchange</div><h2>Export to Excel</h2><p>Create a spreadsheet containing the business data you choose.</p></div></div>
+<form method="get" action="{% url 'data:export' %}"><div class="row" style="padding:0 20px 20px;gap:30px"><div class="grow"><label style="margin:0">Choose data type</label><div class="help" style="margin:0 0 8px">Select the records to include in this workbook.</div>
+<div class="choose">{% for key, label, desc, ic in exports %}<label class="choice" style="margin:0;font-weight:400"><input type="radio" name="kind" value="{{ key }}" {% if kind == key %}checked{% endif %}><span class="tile-ic">{% icon ic 16 %}</span><span><b>{{ label }}</b><small>{{ desc }}</small></span></label>{% endfor %}</div></div>
+<div style="width:300px"><label style="margin:0">Date range</label><div class="help" style="margin:0 0 8px">Limit time-based records to a specific period.</div><div class="two"><div><label>From</label><input type="date" name="from" value="{{ date_from }}"></div><div><label>Through</label><input type="date" name="to" value="{{ date_to }}"></div></div></div></div>
+<div class="card-foot" style="justify-content:space-between;align-items:center"><span class="muted" style="font-size:12px">Items, movements, sales and transactions export as .xlsx</span><button class="btn">{% icon 'download' 15 %} Export .xlsx</button></div></form></div>
+
+{% elif tab == 'backup' %}
+<div class="card"><div class="card-head"><div><div class="eyebrow" style="margin:0">Data safety</div><h2>Back up your business data</h2><p>Create a recovery point containing inventory, documents, and settings.</p></div>
+<form method="post" action="{% url 'data:backup_now' %}">{% csrf_token %}<button class="btn">{% icon 'database' 15 %} Back up now</button></form></div>
+{% with last=backups.0 %}{% if last %}<div class="notice" style="align-items:center"><span class="badge ok">Protected</span><div style="flex:1"><b>Last backup: {{ last.created_at|date:"M d, Y · g:i A" }}</b>{{ last.size_label }} · {{ last.status }}</div>{% icon 'check' 16 %}</div>{% endif %}{% endwith %}
+<div style="padding:0 18px 6px"><b>Backup history</b><div class="help">Recent recovery points saved for this workspace.</div></div>
+<table><tr><th>Date &amp; time</th><th>Type</th><th>File size</th><th>Status</th></tr>
+{% for b in backups %}<tr><td><b>{{ b.created_at|date:"M d, Y · g:i A" }}</b></td><td class="muted">{{ b.get_kind_display }}</td><td class="muted">{{ b.size_label }}</td><td><span class="badge {{ b.status|lower }}">{{ b.status }}</span></td></tr>{% empty %}<tr><td colspan="4" class="muted">No backups yet.</td></tr>{% endfor %}</table>
+<div class="help" style="padding:10px 18px">An automatic backup is made the first time this page is opened each day (the free host has no scheduler).</div></div>
+
+{% else %}
+<div class="card"><div class="card-head"><div><h2>Restore from backup</h2><p>Select a recovery point to replace the current workspace data.</p></div><span class="badge bad">Owner only</span></div>
+<div class="notice"><span>{% icon 'alert' 16 %}</span><div><b>Restoring overwrites current data</b>Changes made after the selected backup will be permanently replaced.</div></div>
+{% if is_admin %}<form method="post" action="{% url 'data:restore' %}" onsubmit="return confirm('Restore this backup? Current data will be replaced.')">{% csrf_token %}
+{% for b in backups %}<label class="restore-row" style="font-weight:400;margin-top:0"><input type="radio" name="backup" value="{{ b.pk }}" {% if forloop.first %}checked{% endif %}><span class="chip">{% icon 'database' 15 %}</span><span class="grow"><b>{{ b.created_at|date:"M d, Y · g:i A" }}</b><small class="muted">{{ b.get_kind_display }} backup · {{ b.size_label }}</small></span><span class="badge {{ b.status|lower }}">{{ b.status }}</span></label>
+{% empty %}<div class="empty">No backups to restore yet. Create one on the Back up tab.</div>{% endfor %}
+<div class="card-foot" style="justify-content:space-between;align-items:center"><span class="muted" style="font-size:12px">Selected: the highlighted recovery point</span><button class="btn btn-dark" {% if not backups %}disabled{% endif %}>Restore selected backup</button></div></form>
+{% else %}<div class="empty"><b>Only the Admin / Owner can restore a backup.</b></div>{% endif %}</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script>var f=document.getElementById('file');if(f)f.addEventListener('change',function(){if(f.files.length)document.getElementById('upform').submit();});</script>{% endblock %}

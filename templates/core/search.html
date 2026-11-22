@@ -1,0 +1,12 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Search · Optimum{% endblock %}
+{% block content %}
+{% include 'partials/head.html' with eyebrow='Search' title='Search results' sub=q %}
+{% if not q %}<div class="card"><div class="empty"><span class="tile-ic">{% icon 'search' 20 %}</span><b>Type something to search</b>Items, sales and documents.</div></div>{% else %}
+<div class="card"><div class="card-head"><h2>Items</h2></div><table><tr><th>Item</th><th>Category</th><th class="num">Price</th><th class="num">Stock</th></tr>
+{% for p in items %}<tr><td><b>{{ p.name }}</b> <span class="muted">{{ p.code }}</span></td><td>{{ p.category.name }}</td><td class="num">{{ p.price|peso }}</td><td class="num">{{ p.quantity }}</td></tr>{% empty %}<tr><td colspan="4" class="muted">No items found.</td></tr>{% endfor %}</table></div>
+<div class="card"><div class="card-head"><h2>Sales</h2></div><table><tr><th>Transaction</th><th>Client</th><th class="num">Total</th><th>Status</th></tr>
+{% for o in orders %}<tr><td>#{{ o.number }}</td><td>{{ o.client_label }}</td><td class="num">{{ o.total|peso }}</td><td><span class="badge {{ o.status_label|lower }}">{{ o.status_label }}</span></td></tr>{% empty %}<tr><td colspan="4" class="muted">No sales found.</td></tr>{% endfor %}</table></div>
+<div class="card"><div class="card-head"><h2>Documents</h2></div><table><tr><th>Type</th><th>Document number</th><th>Reference</th></tr>
+{% for d in docs %}<tr><td>{{ d.get_doc_type_display }}</td><td>{{ d.number }}</td><td>{% if d.order %}{{ d.order.number }}{% else %}{{ d.purchase_order.number }}{% endif %}</td></tr>{% empty %}<tr><td colspan="3" class="muted">No documents found.</td></tr>{% endfor %}</table></div>
+{% endif %}{% endblock %}

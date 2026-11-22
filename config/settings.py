@@ -1,7 +1,10 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')   # must run before any os.environ read below
 
 
 def env_bool(name, default):
@@ -17,6 +20,12 @@ ALLOWED_HOSTS = [h for h in os.environ.get(
     'DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1],testserver').split(',') if h]
 CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o]
 
+# Render sets this automatically (e.g. optimum.onrender.com): allow it without extra setup.
+RENDER_HOST = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '').strip()
+if RENDER_HOST:
+    ALLOWED_HOSTS.append(RENDER_HOST)
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_HOST}')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -31,6 +40,9 @@ INSTALLED_APPS = [
     'sales',
     'documents',
     'reports',
+    'payments',
+    'data',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -60,7 +72,10 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-if os.environ.get('DB_NAME'):
+if os.environ.get('DATABASE_URL'):
+    import dj_database_url
+    DATABASES = {'default': dj_database_url.parse(os.environ['DATABASE_URL'], conn_max_age=600)}
+elif os.environ.get('DB_NAME'):
     DATABASES = {'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': os.environ['DB_NAME'],
@@ -98,9 +113,25 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Maya Checkout (https://developers.maya.ph). Keys come from the environment, never from the code.
+# Sandbox is the default; for live payments set MAYA_BASE_URL=https://pg.paymaya.com with live keys.
+MAYA_PUBLIC_KEY = os.environ.get('MAYA_PUBLIC_KEY', '').strip()
+MAYA_SECRET_KEY = os.environ.get('MAYA_SECRET_KEY', '').strip()
+MAYA_BASE_URL = os.environ.get('MAYA_BASE_URL', 'https://pg-sandbox.paymaya.com').strip()
+MAYA_TIMEOUT = int(os.environ.get('MAYA_TIMEOUT', '15'))
+# Public address of this site (no trailing slash). Maya sends customers back here and calls the webhook here.
+SITE_URL = os.environ.get('SITE_URL', '').strip().rstrip('/')
+
 # Turn on behind HTTPS in production (cloud host): DJANGO_SECURE=1
-if env_bool('DJANGO_SECURE', False):
+if env_bool('DJANGO_SECURE', bool(RENDER_HOST)):
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# SMS through PhilSMS (https://app.philsms.com/developers/documentation).
+PHILSMS_API_TOKEN = os.environ.get('PHILSMS_API_TOKEN', '').strip()
+PHILSMS_SENDER_ID = os.environ.get('PHILSMS_SENDER_ID', 'PhilSMS').strip()
+PHILSMS_BASE_URL = os.environ.get('PHILSMS_BASE_URL', 'https://app.philsms.com/api/v3').strip().rstrip('/')
+SMS_OWNER_NUMBER = os.environ.get('SMS_OWNER_NUMBER', '').strip()       # gets low-stock alerts
+SMS_ENABLED = env_bool('SMS_ENABLED', True)

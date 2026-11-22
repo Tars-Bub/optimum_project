@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: optimum-inventory
+    runtime: python
+    plan: free
+    buildCommand: ./build.sh
+    startCommand: gunicorn config.wsgi:application
+    healthCheckPath: /accounts/login/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_TIME_ZONE
+        value: Asia/Manila
+      # Maya sandbox keys: paste them in the Render dashboard, never in this file.
+      - key: MAYA_PUBLIC_KEY
+        sync: false
+      - key: MAYA_SECRET_KEY
+        sync: false
+      - key: MAYA_BASE_URL
+        value: https://pg-sandbox.paymaya.com
+      - key: SITE_URL
+        sync: false
+      - key: PHILSMS_API_TOKEN
+        sync: false
+      - key: PHILSMS_SENDER_ID
+        value: PhilSMS
+      - key: SMS_OWNER_NUMBER
+        sync: false

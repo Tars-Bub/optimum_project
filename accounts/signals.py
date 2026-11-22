@@ -6,8 +6,8 @@ from .models import Profile
 
 
 @receiver(post_save, sender=get_user_model())
-def create_profile(sender, instance, created, **kwargs):
-    if created:
+def create_profile(sender, instance, created, raw=False, **kwargs):
+    if created and not raw:
         Profile.objects.create(
             user=instance,
             role='admin' if instance.is_superuser else 'staff',

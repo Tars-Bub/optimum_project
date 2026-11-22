@@ -1,0 +1,37 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Style Guide · Optimum{% endblock %}
+{% block content %}
+{% include 'partials/head.html' with eyebrow='Design system' title='Style Guide' sub='Reusable foundations and interface patterns for Optimum.' %}
+<div class="tabs"><a class="tab {% if tab == 'foundations' %}active{% endif %}" href="?tab=foundations">Foundations</a><a class="tab {% if tab == 'components' %}active{% endif %}" href="?tab=components">Components</a><a class="tab {% if tab == 'patterns' %}active{% endif %}" href="?tab=patterns">Patterns</a><span class="tab disabled">Disabled</span></div>
+{% if tab == 'foundations' %}
+<div class="card"><div class="card-head"><div><h2>Color palette</h2><p>Core colors provide a focused, professional foundation.</p></div></div>
+<div class="swatches"><div><div class="sw" style="background:#2c3947"></div><b>Slate 900</b><br><small class="muted">#2C3947</small></div><div><div class="sw" style="background:#587b98"></div><b>Steel 600</b><br><small class="muted">#587B98</small></div><div><div class="sw" style="background:#e8edf2"></div><b>Cloud 100</b><br><small class="muted">#E8EDF2</small></div><div><div class="sw" style="background:#fff"></div><b>White</b><br><small class="muted">#FFFFFF</small></div></div></div>
+<div class="sg-grid">
+<div class="card"><div class="card-head"><div><h2>Typography</h2><p>Inter, balanced for clarity and dense data.</p></div></div><div class="sg-pad">
+<p style="display:flex;gap:18px;align-items:baseline"><small class="muted" style="width:90px">Display · 30/40</small><span style="font-size:26px">Inventory overview</span></p>
+<p style="display:flex;gap:18px;align-items:baseline"><small class="muted" style="width:90px">Heading · 20/28</small><span style="font-size:17px;font-weight:600">Recent transactions</span></p>
+<p style="display:flex;gap:18px;align-items:baseline"><small class="muted" style="width:90px">Body · 14/22</small><span>Track every item with confidence.</span></p>
+<p style="display:flex;gap:18px;align-items:baseline"><small class="muted" style="width:90px">Caption · 12/16</small><span style="font-size:11px;letter-spacing:.08em;font-weight:600">LAST UPDATED TODAY</span></p></div></div>
+<div class="card"><div class="card-head"><div><h2>Spacing &amp; shape</h2><p>An 8px grid creates predictable rhythm.</p></div></div><div class="sg-pad">
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><i style="display:block;height:8px;width:8px;background:var(--accent)"></i><small class="muted">8px</small></div>
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><i style="display:block;height:8px;width:16px;background:var(--accent)"></i><small class="muted">16px</small></div>
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><i style="display:block;height:8px;width:24px;background:var(--accent)"></i><small class="muted">24px</small></div>
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:14px"><i style="display:block;height:8px;width:32px;background:var(--accent)"></i><small class="muted">32px</small></div>
+<div class="card" style="padding:14px;margin:0;box-shadow:0 4px 12px rgba(44,57,71,.1)">8px radius · soft shadow</div></div></div></div>
+{% elif tab == 'components' %}
+<div class="sg-grid">
+<div class="card"><div class="card-head"><div><h2>Buttons</h2><p>Default, hover, disabled, and destructive actions.</p></div></div><div class="sg-pad chips"><span class="btn">Primary</span><span class="btn btn-outline">Secondary</span><span class="btn btn-ghost">Ghost</span><span class="btn disabled">Disabled</span><span class="btn btn-dark">Delete</span></div></div>
+<div class="card"><div class="card-head"><div><h2>Badges</h2><p>Status color is reserved for operational feedback.</p></div></div><div class="sg-pad chips"><span class="badge completed">Completed</span><span class="badge low">Low stock</span><span class="badge critical">Critical</span><span class="badge draft">Draft</span></div></div>
+<div class="card"><div class="card-head"><h2>Inputs</h2></div><div class="sg-pad two" style="grid-template-columns:1fr 1fr 1fr"><div><label>Default</label><input placeholder="Enter item name"></div><div><label>Error</label><input value="Invalid SKU" style="border-color:var(--bad)"><div class="help">Use the format ABC-1000</div></div><div><label>Disabled</label><input value="Unavailable" disabled></div></div></div>
+<div class="card"><div class="card-head"><h2>Tabs &amp; toast</h2></div><div class="sg-pad"><div class="tabs" style="margin-bottom:12px"><span class="tab active">Overview</span><span class="tab">Activity</span><span class="tab">History</span><span class="tab disabled">Disabled</span></div>
+<div class="msg success" style="box-shadow:none"><span class="tile-ic">{% icon 'check' 15 %}</span><div class="body"><b>Changes saved</b>Your inventory was updated.</div><span class="x">{% icon 'x' 14 %}</span></div></div></div>
+</div>
+<div class="card" style="margin-top:16px"><div class="card-head"><h2>Table</h2></div><table><tr><th>Item</th><th>SKU</th><th>Quantity</th><th>Status</th></tr><tr><td><b>Copy Paper, Letter</b></td><td>PAP-1001</td><td>4</td><td><span class="badge critical">Critical</span></td></tr><tr><td><b>Blue Ballpoint Pens</b></td><td>WRT-2042</td><td>9</td><td><span class="badge low">Low</span></td></tr></table></div>
+{% else %}
+<div class="sg-grid">
+<div class="card"><div class="card-head"><h2>Confirmation modal</h2></div><div class="confirm"><span class="tile-ic">{% icon 'alert' 18 %}</span><b>Delete this item?</b><p class="muted" style="margin:4px 0 14px;font-size:12px">This action can't be undone.</p><span class="btn btn-outline">Cancel</span> <span class="btn btn-dark">Delete</span></div></div>
+<div class="card"><div class="card-head"><h2>Notifications</h2></div><div class="sg-pad"><div class="msg success" style="box-shadow:none;margin-bottom:10px"><span class="tile-ic">{% icon 'check' 15 %}</span><div class="body"><b>Stock recorded</b>24 units were added successfully.</div><span class="x">{% icon 'x' 14 %}</span></div>
+<div class="msg error" style="box-shadow:none"><span class="tile-ic">{% icon 'alert' 15 %}</span><div class="body"><b>Something went wrong</b>Check the fields and try again.</div><span class="x">{% icon 'x' 14 %}</span></div></div></div>
+</div>
+{% endif %}
+{% endblock %}

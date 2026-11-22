@@ -1,0 +1,42 @@
+# API response tests with Postman/Newman. Separate from ci.yml so the two do not interfere.
+name: API tests (Postman)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  newman:
+    runs-on: ubuntu-latest
+    env:
+      MAYA_PUBLIC_KEY: ${{ secrets.MAYA_PUBLIC_KEY }}
+      MAYA_SECRET_KEY: ${{ secrets.MAYA_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Start the app with demo data
+        run: |
+          python manage.py migrate
+          python manage.py seed_demo
+          nohup python manage.py runserver 127.0.0.1:8000 > server.log 2>&1 &
+          for i in $(seq 1 20); do curl -fs http://127.0.0.1:8000/health/ && break || sleep 1; done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g newman
+      - name: App tests (no Maya keys needed)
+        run: >
+          newman run postman/optimum-maya.postman_collection.json
+          -e postman/optimum-maya.postman_environment.json
+          --folder "2. Optimum app (no login)" --folder "3. Optimum app (logged in)"
+      - name: Maya sandbox tests (only when the secrets are set)
+        if: ${{ env.MAYA_PUBLIC_KEY != '' && env.MAYA_SECRET_KEY != '' }}
+        run: >
+          newman run postman/optimum-maya.postman_collection.json
+          -e postman/optimum-maya.postman_environment.json
+          --folder "1. Maya sandbox API"
+          --env-var maya_public_key=$MAYA_PUBLIC_KEY --env-var maya_secret_key=$MAYA_SECRET_KEY

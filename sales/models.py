@@ -11,6 +11,7 @@ class Order(models.Model):
 
     client_name = models.CharField(max_length=120, blank=True)
     client_business = models.CharField(max_length=120, blank=True)
+    client_phone = models.CharField(max_length=30, blank=True)
     client_tin = models.CharField(max_length=30, blank=True)
     client_address = models.CharField(max_length=255, blank=True)
     po_number = models.CharField(max_length=50, blank=True)
@@ -32,7 +33,7 @@ class Order(models.Model):
 
     @property
     def number(self):
-        return f'SO-{self.pk:04d}'
+        return f'SL-{self.pk:04d}'
 
     @property
     def total(self):

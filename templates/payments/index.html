@@ -1,0 +1,21 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Maya Payments · Optimum{% endblock %}
+{% block content %}
+{% include 'partials/head.html' with eyebrow='Transactions' title='Maya Payments' sub='Collect payments with Maya Checkout and follow their status.' %}
+<div class="cards" style="grid-template-columns:repeat(4,1fr)">
+<div class="card stat"><span class="tile-ic">{% icon 'dollar' 20 %}</span><div><small>Awaiting payment</small><strong>{{ stats.unpaid }}</strong><em>Finalized sales with a balance</em></div></div>
+<div class="card stat"><span class="tile-ic">{% icon 'clock' 20 %}</span><div><small>Open checkouts</small><strong>{{ stats.pending }}</strong><em>Waiting for the customer</em></div></div>
+<div class="card stat"><span class="tile-ic">{% icon 'check' 20 %}</span><div><small>Paid with Maya</small><strong>{{ stats.paid }}</strong><em>Confirmed by Maya</em></div></div>
+<div class="card stat"><span class="tile-ic">{% icon 'alert' 20 %}</span><div><small>Failed checkouts</small><strong>{{ stats.failed }}</strong><em>Not completed</em></div></div>
+</div>
+<div class="card"><div class="card-head"><div><h2>Sales awaiting payment</h2><p>Start a Maya checkout for a sale that still has a balance.</p></div></div>
+<table><tr><th>Transaction</th><th>Client</th><th class="num">Total</th><th class="num">Balance</th><th class="num">Action</th></tr>
+{% for o in unpaid %}<tr><td><b>#{{ o.number }}</b></td><td>{{ o.client_label }}</td><td class="num">{{ o.total|peso }}</td><td class="num"><b>{{ o.balance|peso }}</b></td><td class="actcell"><a class="btn btn-sm" href="{% url 'payments:maya_pay' o.pk %}">{% icon 'card' 14 %} Pay with Maya</a></td></tr>
+{% empty %}<tr><td colspan="5"><div class="empty"><span class="tile-ic">{% icon 'check' 20 %}</span><b>Nothing is waiting for payment</b>Every finalized sale is fully paid.</div></td></tr>{% endfor %}</table></div>
+<div class="card"><div class="card-head"><div><h2>Maya checkout history</h2><p>Every checkout started from this system, newest first.</p></div><span class="pill">{{ payments|length }} checkouts</span></div>
+<table><tr><th>When</th><th>Transaction</th><th>Client</th><th class="num">Amount</th><th>Status</th><th>Maya status</th><th>Reference</th><th></th></tr>
+{% for p in payments %}<tr><td class="muted">{{ p.created_at|date:"M d, g:i A" }}</td><td><b>#{{ p.order.number }}</b></td><td>{{ p.order.client_label }}</td><td class="num">{{ p.amount|peso }}</td>
+<td><span class="badge {{ p.status }}">{{ p.get_status_display }}</span></td><td class="muted">{{ p.maya_status|default:"-" }}</td><td class="muted" style="font-size:11.5px">{{ p.reference }}</td>
+<td class="actcell"><a class="btn btn-outline btn-sm" href="{% url 'payments:maya_detail' p.pk %}">Open</a></td></tr>
+{% empty %}<tr><td colspan="8"><div class="empty"><span class="tile-ic">{% icon 'card' 20 %}</span><b>No Maya checkouts yet</b>Choose Pay with Maya on a sale above.</div></td></tr>{% endfor %}</table></div>
+{% endblock %}
