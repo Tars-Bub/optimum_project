@@ -1,15 +1,19 @@
 # Optimum Inventory Tracking and Sales Processing System
 
-Work in progress: stage 5 of 6.
+Web app for a small retail business: products and stock, sales with drafts and payments,
+returns / exchanges / voids, printing on pre-printed forms, reports, and staff accounts.
+Built with Django (Python). Runs on SQLite out of the box; MySQL is supported through environment variables.
 
-**Included so far:** Reports & Search: Transactions, Sales, Stock, Inventory Summary, Activity, Audit Log.
+## Run it (Windows, macOS or Linux)
 
-## Run it
+Needs Python 3.10 or newer.
 
 ```bash
+python -m venv .venv
+# Windows:  .venv\Scripts\activate        macOS/Linux:  source .venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed_demo
+python manage.py seed_demo          # demo accounts, categories and products
 python manage.py runserver
 ```
 
@@ -29,6 +33,8 @@ Change these passwords before using real data. To start empty instead of demo da
 ```bash
 python manage.py test
 python manage.py test payments
+python manage.py test            # all unit and integration tests, including payments
+python manage.py test payments   # Maya integration only
 ```
 
 API response tests (Postman / Newman) are in `postman/`. See `docs/api-integration.md`.

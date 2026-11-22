@@ -244,3 +244,10 @@ details.more{padding:0 18px 8px}details.more summary{cursor:pointer;color:var(--
 @media(max-width:1000px){.row{flex-direction:column}.cart{width:100%}.cards,.sg-grid{grid-template-columns:1fr}}
 @media(max-width:860px){.sidebar{display:none}.content{padding:16px}.who{display:none}.choose,.two{grid-template-columns:1fr}.prodgrid{grid-template-columns:1fr}.swatches{grid-template-columns:1fr 1fr}th,td{padding:10px}.card{overflow-x:auto}}
 .form-body .two,.form-body details{margin-top:14px}
+.auth .card{width:380px}
+.auth h1{text-align:center}
+.auth .brand{text-align:center;color:var(--text);padding-bottom:6px}
+@media(max-width:900px){.sidebar{display:none}.row{flex-direction:column}.cart{width:100%}.cards,.tiles{grid-template-columns:1fr 1fr}}
+
+.badge.failed,.badge.expired,.badge.cancelled{background:#f8e1e1;color:var(--bad)}
+.msg.info{border-color:#b9c9d6;background:#f1f6fa}
