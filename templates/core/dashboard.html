@@ -1,17 +1,20 @@
 {% extends 'base.html' %}{% load ui %}
 {% block title %}Dashboard · Optimum{% endblock %}
 {% block content %}
-<h1>Dashboard</h1>
-<div class="actions"><a class="btn" href="{% url 'sales:index' %}">New Sale</a><a class="btn btn-outline" href="/stock/?tab=incoming">Record Incoming Stock</a></div>
+<div class="page-head"><div><div class="eyebrow">{{ today|date:"l, M d"|upper }}</div><h1>{{ greeting }}, {{ first_name }}</h1><p class="sub">Here's what's happening with your inventory today.</p></div></div>
 <div class="cards">
-<div class="card stat"><small>Today's sales</small><strong>{{ sales_today|peso }}</strong></div>
-<div class="card stat"><small>Low-stock items</small><strong>{{ low_items }}</strong></div>
-<div class="card stat"><small>Depleted items</small><strong>{{ depleted_items }}</strong></div>
-<div class="card stat"><small>Total items</small><strong>{{ total_items }}</strong></div>
+<div class="card stat"><span class="tile-ic">{% icon 'dollar' 20 %}</span><div><small>Today's sales</small><strong>{{ sales_today|peso }}</strong></div></div>
+<div class="card stat"><span class="tile-ic">{% icon 'alert' 20 %}</span><div><small>Low-stock items</small><strong>{{ low_total }}</strong><em>{{ urgent }} require immediate action</em></div><a href="/stock/?tab=alerts">Review →</a></div>
+<div class="card stat"><span class="tile-ic">{% icon 'box' 20 %}</span><div><small>Total items</small><strong>{{ total_items }}</strong><em>Across {{ categories }} categories</em></div></div>
 </div>
-<div class="card"><h2>Recent orders</h2>
-<table><tr><th>Order no.</th><th>Client</th><th class="num">Total</th><th>Payment</th></tr>
-{% for o in recent %}<tr><td>{{ o.number }}</td><td>{{ o.client_label }}</td><td class="num">{{ o.total|peso }}</td>
-<td>{% if o.status == 'voided' %}<span class="badge voided">Voided</span>{% else %}<span class="badge {{ o.payment_status|lower }}">{{ o.payment_status }}</span>{% endif %}</td></tr>
-{% empty %}<tr><td colspan="4" class="muted">No sales yet.</td></tr>{% endfor %}</table></div>
+<h2>Quick actions</h2><p class="sub" style="margin:0 0 10px">Jump into your most common workflows.</p>
+<div class="two" style="margin-bottom:18px">
+<a class="card" href="{% url 'sales:index' %}" style="text-decoration:none;color:inherit;margin:0"><div class="stat" style="padding:14px 18px"><span class="tile-ic" style="background:var(--accent);color:#fff">{% icon 'cart' 20 %}</span><div><b>New Sale</b><br><small>Create and complete a customer sale</small></div><span style="margin-left:auto">{% icon 'chevron-right' 16 %}</span></div></a>
+<a class="card" href="/stock/?tab=incoming" style="text-decoration:none;color:inherit;margin:0"><div class="stat" style="padding:14px 18px"><span class="tile-ic" style="background:var(--accent);color:#fff">{% icon 'download' 20 %}</span><div><b>Record Incoming Stock</b><br><small>Add received products to inventory</small></div><span style="margin-left:auto">{% icon 'chevron-right' 16 %}</span></div></a>
+</div>
+<div class="card"><div class="card-head"><div><h2>Recent transactions</h2><p>Latest sales and returns across the business.</p></div><a href="{% url 'reports:index' %}" style="font-weight:600;text-decoration:none">View all →</a></div>
+<table><tr><th>Transaction</th><th>Date &amp; time</th><th>Staff</th><th>Items</th><th class="num">Total</th><th>Status</th></tr>
+{% for o in recent %}<tr><td><b>#{{ o.number }}</b></td><td>{{ o.finalized_at|date:"M d, g:i A" }}</td><td>{{ o.created_by.profile.display_name|default:"-" }}</td><td>{{ o.items.all|length }} items</td><td class="num">{{ o.total|peso }}</td>
+<td><span class="badge {{ o.status_label|lower }}">{{ o.status_label }}</span></td></tr>
+{% empty %}<tr><td colspan="6" class="muted">No sales yet.</td></tr>{% endfor %}</table></div>
 {% endblock %}

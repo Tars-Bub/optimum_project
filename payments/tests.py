@@ -308,7 +308,11 @@ class PaymentViewTests(Base):
         with mock.patch('payments.services.maya.create_checkout', side_effect=maya.MayaError('Maya rejected it (401).')):
             resp = self.client.post(reverse('payments:maya_pay', args=[self.order.pk]), follow=True)
         self.assertContains(resp, 'Maya rejected it')
-        self.assertEqual(MayaPayment.objects.count(), 0)
+        # the failed attempt is kept (as Failed, never counted as paid) so the Maya Payments list shows it
+        failed = MayaPayment.objects.get()
+        self.assertEqual((failed.status, failed.maya_status), ('failed', 'NOT_CREATED'))
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.amount_paid, 0)
 
     def test_draft_orders_cannot_be_paid(self):
         self.login()
@@ -385,3 +389,88 @@ class PaymentViewTests(Base):
         self.client.login(username='admin', password='pass12345!x')
         resp = self.client.get('/reports/?tab=transactions')
         self.assertContains(resp, reverse('payments:maya_pay', args=[self.order.pk]))
+
+
+@override_settings(DEMO_PAYMENTS=True, **KEYS)
+class DemoPaymentTests(Base):
+    """DEMO_PAYMENTS=1: when Maya is down, a simulated checkout page keeps the flow usable."""
+
+    def setUp(self):
+        super().setUp()
+        self.order = finalize_order(self.cart(p1=2), self.staff)       # total 40
+
+    def down(self):
+        return mock.patch('payments.services.maya.create_checkout',
+                          side_effect=maya.MayaError('Maya is temporarily unavailable.', 503))
+
+    def start(self):
+        with self.down():
+            return start_checkout(self.order, self.staff, 'https://shop.example')
+
+    def test_maya_down_creates_a_demo_checkout_instead_of_failing(self):
+        payment = self.start()
+        self.assertTrue(payment.is_demo)
+        self.assertEqual((payment.status, payment.amount), ('pending', Decimal('40.00')))
+        self.assertEqual(payment.checkout_url,
+                         'https://shop.example' + reverse('payments:demo_pay', args=[payment.reference]))
+        self.assertIn('DEMO MODE', payment.note)
+
+    @override_settings(DEMO_PAYMENTS=False)
+    def test_without_the_switch_a_maya_failure_still_fails(self):
+        with self.down():
+            with self.assertRaises(maya.MayaError):
+                start_checkout(self.order, self.staff, 'https://shop.example')
+        self.assertEqual(MayaPayment.objects.get().status, 'failed')
+
+    def test_real_maya_is_still_used_when_it_works(self):
+        with mock.patch('payments.services.maya.create_checkout', return_value=CHECKOUT):
+            payment = start_checkout(self.order, self.staff, 'https://shop.example')
+        self.assertFalse(payment.is_demo)
+        self.assertEqual(payment.checkout_id, 'chk-123')
+
+    def test_demo_page_is_public_and_simulating_payment_marks_the_order_paid(self):
+        payment = self.start()
+        url = reverse('payments:demo_pay', args=[payment.reference])
+        client = Client()                                               # not logged in, like the customer's phone
+        self.assertContains(client.get(url), 'Simulate successful payment')
+        with mock.patch('payments.maya.requests.request') as net:
+            resp = client.post(url, {'action': 'pay'})
+        net.assert_not_called()                                         # a demo payment never calls Maya
+        self.assertEqual(resp.status_code, 302)
+        payment.refresh_from_db()
+        self.order.refresh_from_db()
+        self.assertEqual((payment.status, payment.maya_status), ('paid', 'DEMO_SUCCESS'))
+        self.assertEqual(self.order.amount_paid, Decimal('40.00'))
+        self.assertContains(client.get(resp['Location']), 'simulated')
+
+    def test_paying_twice_does_not_double_count(self):
+        payment = self.start()
+        url = reverse('payments:demo_pay', args=[payment.reference])
+        Client().post(url, {'action': 'pay'})
+        Client().post(url, {'action': 'pay'})
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.amount_paid, Decimal('40.00'))
+
+    def test_cancel_leaves_the_order_unpaid(self):
+        payment = self.start()
+        Client().post(reverse('payments:demo_pay', args=[payment.reference]), {'action': 'cancel'})
+        payment.refresh_from_db()
+        self.order.refresh_from_db()
+        self.assertEqual(payment.status, 'cancelled')
+        self.assertEqual(self.order.amount_paid, Decimal('0'))
+
+    def test_sync_does_not_call_maya_for_a_demo_payment(self):
+        payment = self.start()
+        with mock.patch('payments.maya.requests.request') as net:
+            sync_payment(payment)
+        net.assert_not_called()
+
+    def test_demo_page_is_404_when_the_switch_is_off(self):
+        payment = self.start()
+        with override_settings(DEMO_PAYMENTS=False):
+            self.assertEqual(Client().get(reverse('payments:demo_pay', args=[payment.reference])).status_code, 404)
+
+    def test_demo_page_is_404_for_a_real_maya_payment(self):
+        real = MayaPayment.objects.create(order=self.order, reference='SO-REAL-1', checkout_id='chk-real',
+                                          amount=Decimal('40'))
+        self.assertEqual(Client().get(reverse('payments:demo_pay', args=[real.reference])).status_code, 404)

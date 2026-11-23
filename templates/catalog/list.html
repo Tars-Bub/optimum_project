@@ -1,26 +1,66 @@
 {% extends 'base.html' %}{% load ui %}
-{% block title %}Categories & Products · Optimum{% endblock %}
+{% block title %}Categories & Items · Optimum{% endblock %}
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center"><h1>Categories &amp; Products</h1>
-<a class="btn" href="{% url 'catalog:product_add' %}">Add product</a></div>
-<div class="tabs"><a class="tab {% if tab != 'categories' %}active{% endif %}" href="?tab=products">Products</a><a class="tab {% if tab == 'categories' %}active{% endif %}" href="?tab=categories">Categories</a></div>
+{% include 'partials/head.html' with eyebrow='Inventory' title='Categories & Items' sub='Organize and maintain your product catalog.' %}
+<div class="tabs"><a class="tab {% if tab == 'categories' %}active{% endif %}" href="?tab=categories">Categories <span class="count">{{ cat_total }}</span></a><a class="tab {% if tab != 'categories' %}active{% endif %}" href="?tab=items">Items <span class="count">{{ item_total }}</span></a></div>
+
 {% if tab == 'categories' %}
-<div class="row"><div class="card grow">
-<form class="filters" method="get"><input type="hidden" name="tab" value="categories"><input name="q" value="{{ q }}" placeholder="Search categories"><button class="btn btn-outline">Search</button></form>
-<table><tr><th>Category</th><th>Products</th><th>Actions</th></tr>
-{% for c in categories %}<tr><td>{{ c.name }}</td><td>{{ c.n }}</td><td><a href="{% url 'catalog:category_edit' c.pk %}">Edit</a> |
-<form class="inline" method="post" action="{% url 'catalog:category_delete' c.pk %}" onsubmit="return confirm('Delete this category?')">{% csrf_token %}<button class="link">Delete</button></form></td></tr>
-{% empty %}<tr><td colspan="3" class="muted">No categories yet.</td></tr>{% endfor %}</table></div>
-<div class="card" style="width:300px"><h2>New category</h2><form method="post" action="{% url 'catalog:category_add' %}">{% csrf_token %}<label>Name</label><input name="name" required><p><button class="btn">Add category</button></p></form></div></div>
+<div class="card"><div class="card-head"><div><h2>Manage categories</h2><p>Create and organize groups for your inventory.</p></div><button class="btn" data-open="m-addcat">{% icon 'plus' 15 %} Add category</button></div>
+<form class="card-bar" method="get"><input type="hidden" name="tab" value="categories"><div class="field-ic grow" style="max-width:320px">{% icon 'search' 15 %}<input name="q" value="{{ q }}" placeholder="Search categories..."></div><span class="muted" style="margin-left:auto;font-size:12px">{{ categories|length }} categories</span></form>
+<table><tr><th>Category name</th><th>Item count</th><th class="num">Actions</th></tr>
+{% for c in categories %}<tr><td><div class="cellflex"><span class="chip">{% icon 'box' 15 %}</span><b>{{ c.name }}</b></div></td><td class="muted">{{ c.n }} items</td>
+<td class="actcell"><button class="icobtn" title="Edit" data-edit-cat="{{ c.pk }}" data-name="{{ c.name }}">{% icon 'pencil' 14 %}</button>
+<button class="icobtn" title="Delete" data-del="{% url 'catalog:category_delete' c.pk %}" data-what="this category">{% icon 'trash' 14 %}</button></td></tr>
+{% empty %}<tr><td colspan="3"><div class="empty"><span class="tile-ic">{% icon 'box' 20 %}</span><b>No categories yet</b>Add a category first, then add items.</div></td></tr>{% endfor %}</table></div>
 {% else %}
-<div class="card">
-<form class="filters" method="get"><input type="hidden" name="tab" value="products"><input name="q" value="{{ q }}" placeholder="Search name or code">
-<select name="category"><option value="">All categories</option>{% for c in all_categories %}<option value="{{ c.pk }}" {% if cat == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select><button class="btn btn-outline">Filter</button></form>
-<table><tr><th>Item code</th><th>Name</th><th>Category</th><th class="num">Unit cost</th><th class="num">Price</th><th class="num">Stock</th><th>Status</th><th>Actions</th></tr>
-{% for p in items %}<tr><td>{{ p.code }}</td><td>{{ p.name }}</td><td>{{ p.category.name }}</td><td class="num">{{ p.unit_cost|peso }}</td><td class="num">{{ p.price|peso }}</td><td class="num">{{ p.quantity }}</td>
-<td><span class="badge {{ p.status }}">{{ p.status_label }}</span></td>
-<td><a href="{% url 'catalog:product_edit' p.pk %}">Edit</a> |
-<form class="inline" method="post" action="{% url 'catalog:product_delete' p.pk %}" onsubmit="return confirm('Delete this product?')">{% csrf_token %}<button class="link">Delete</button></form></td></tr>
-{% empty %}<tr><td colspan="8" class="muted">No products found.</td></tr>{% endfor %}</table></div>
+<div class="card"><div class="card-head"><div><h2>Manage items</h2><p>Add products and maintain pricing and stock settings.</p></div><button class="btn" data-open="m-additem">{% icon 'plus' 15 %} Add item</button></div>
+<form class="card-bar" method="get"><input type="hidden" name="tab" value="items"><div class="field-ic grow" style="max-width:320px">{% icon 'search' 15 %}<input name="q" value="{{ q }}" placeholder="Search items..."></div>
+<select name="category" onchange="this.form.submit()" style="width:auto"><option value="">Category: All categories</option>{% for c in all_categories %}<option value="{{ c.pk }}" {% if cat == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select><span class="muted" style="margin-left:auto;font-size:12px">{{ items|length }} items</span></form>
+<table><tr><th>Item name</th><th>Category</th><th class="num">Price</th><th class="num">Stock</th><th>Status</th><th class="num">Actions</th></tr>
+{% for p in items %}<tr><td><div class="cellflex"><span class="chip">{{ p.name|initials }}</span><div><b>{{ p.name }}</b><small>Threshold: {{ p.reorder_level }} · {{ p.code }}</small></div></div></td><td class="muted">{{ p.category.name }}</td><td class="num">{{ p.price|peso }}</td><td class="num">{{ p.quantity }} units</td>
+<td>{% if p.status == 'in' %}<span class="badge in">In stock</span>{% else %}<span class="badge critical">Critical</span>{% endif %}</td>
+<td class="actcell"><button class="icobtn" title="Edit" data-edit-item="{{ p.pk }}" data-name="{{ p.name }}" data-category="{{ p.category_id }}" data-price="{{ p.price }}" data-qty="{{ p.quantity }}" data-reorder="{{ p.reorder_level }}" data-code="{{ p.code }}" data-cost="{{ p.unit_cost }}">{% icon 'pencil' 14 %}</button>
+<button class="icobtn" title="Delete" data-del="{% url 'catalog:product_delete' p.pk %}" data-what="this item">{% icon 'trash' 14 %}</button></td></tr>
+{% empty %}<tr><td colspan="6"><div class="empty"><span class="tile-ic">{% icon 'box' 20 %}</span><b>No items found</b>Use Add item to create the first one.</div></td></tr>{% endfor %}</table></div>
 {% endif %}
+
+<dialog class="modal" id="m-addcat"><form method="post" action="{% url 'catalog:category_add' %}">{% csrf_token %}
+<div class="form-head"><span class="tile-ic">{% icon 'box' 18 %}</span><div class="grow"><h2>Add category</h2><p>Create a group for your inventory.</p></div><button class="x" data-close>{% icon 'x' 16 %}</button></div>
+<div class="form-body"><label>Category name</label><input name="name" required placeholder="e.g. Paper &amp; Notebooks"><div class="help">Use a clear name that staff will recognize.</div></div>
+<div class="card-foot"><button class="btn btn-outline" data-close>Cancel</button><button class="btn">Add category</button></div></form></dialog>
+
+<dialog class="modal" id="m-editcat"><form method="post" id="f-editcat">{% csrf_token %}
+<div class="form-head"><span class="tile-ic">{% icon 'box' 18 %}</span><div class="grow"><h2>Edit category</h2><p>Update this category's name.</p></div><button class="x" data-close>{% icon 'x' 16 %}</button></div>
+<div class="form-body"><label>Category name</label><input name="name" id="ec-name" required><div class="help">Use a clear name that staff will recognize.</div></div>
+<div class="card-foot"><button class="btn btn-outline" data-close>Cancel</button><button class="btn">Save changes</button></div></form></dialog>
+
+<dialog class="modal" id="m-additem"><form method="post" action="{% url 'catalog:product_add' %}">{% csrf_token %}
+<div class="form-head"><span class="tile-ic">{% icon 'box' 18 %}</span><div class="grow"><h2>Add item</h2><p>Create a product and set its starting inventory.</p></div><button class="x" data-close>{% icon 'x' 16 %}</button></div>
+<div class="form-body">
+<label>Item name</label><input name="name" required placeholder="e.g. Copy Paper, Legal">
+<label>Category</label><select name="category" required>{% for c in all_categories %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}</select>
+<div class="two"><div><label>Price</label><input name="price" type="number" step="0.01" min="0" required placeholder="0.00"></div><div><label>Initial stock</label><input name="opening_stock" type="number" min="0" placeholder="0"></div></div>
+<label>Low-stock threshold</label><input name="reorder_level" type="number" min="0" required placeholder="Notify staff when stock reaches..."><div class="help">Items at or below this quantity will appear in low-stock alerts.</div>
+<details class="more" style="padding:0"><summary>More details (optional)</summary><div class="two"><div><label>Item code</label><input name="code" placeholder="Auto-generated"></div><div><label>Unit cost</label><input name="unit_cost" type="number" step="0.01" min="0" placeholder="0.00"></div></div></details></div>
+<div class="card-foot"><button class="btn btn-outline" data-close>Cancel</button><button class="btn">Add item</button></div></form></dialog>
+
+<dialog class="modal" id="m-edititem"><form method="post" id="f-edititem">{% csrf_token %}
+<div class="form-head"><span class="tile-ic">{% icon 'box' 18 %}</span><div class="grow"><h2>Edit item</h2><p>Update product details and stock settings.</p></div><button class="x" data-close>{% icon 'x' 16 %}</button></div>
+<div class="form-body">
+<label>Item name</label><input name="name" id="ei-name" required>
+<label>Category</label><select name="category" id="ei-category" required>{% for c in all_categories %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}</select>
+<div class="two"><div><label>Price</label><input name="price" id="ei-price" type="number" step="0.01" min="0" required></div><div><label>On hand</label><input id="ei-qty" readonly></div></div>
+<div class="help" style="margin-top:-2px">Quantity changes are recorded on the Stock screen.</div>
+<label>Low-stock threshold</label><input name="reorder_level" id="ei-reorder" type="number" min="0" required><div class="help">Items at or below this quantity will appear in low-stock alerts.</div>
+<div class="two"><div><label>Item code</label><input name="code" id="ei-code"></div><div><label>Unit cost</label><input name="unit_cost" id="ei-cost" type="number" step="0.01" min="0"></div></div></div>
+<div class="card-foot"><button class="btn btn-outline" data-close>Cancel</button><button class="btn">Save changes</button></div></form></dialog>
+
+<dialog class="modal" id="m-del"><form method="post" id="f-del">{% csrf_token %}<div class="confirm"><span class="tile-ic">{% icon 'alert' 18 %}</span><b>Delete <span id="del-what">this item</span>?</b><p class="muted" style="margin:4px 0 16px;font-size:12px">This action can't be undone.</p><button class="btn btn-outline" data-close>Cancel</button> <button class="btn btn-dark">Delete</button></div></form></dialog>
 {% endblock %}
+{% block scripts %}<script>
+document.querySelectorAll('[data-edit-cat]').forEach(function(b){b.onclick=function(){document.getElementById('f-editcat').action='/catalog/categories/'+b.dataset.editCat+'/edit/';document.getElementById('ec-name').value=b.dataset.name;document.getElementById('m-editcat').showModal();};});
+document.querySelectorAll('[data-edit-item]').forEach(function(b){b.onclick=function(){var d=b.dataset;document.getElementById('f-edititem').action='/catalog/products/'+d.editItem+'/edit/';
+['name','price','reorder','code','cost'].forEach(function(k){document.getElementById('ei-'+k).value=d[k];});document.getElementById('ei-category').value=d.category;document.getElementById('ei-qty').value=d.qty+' units';document.getElementById('m-edititem').showModal();};});
+document.querySelectorAll('[data-del]').forEach(function(b){b.onclick=function(){document.getElementById('f-del').action=b.dataset.del;document.getElementById('del-what').textContent=b.dataset.what;document.getElementById('m-del').showModal();};});
+{% if request.GET.add %}document.getElementById('m-additem').showModal();{% endif %}
+</script>{% endblock %}

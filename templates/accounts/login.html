@@ -1,12 +1,14 @@
-{% extends 'auth_base.html' %}
+{% extends 'auth_base.html' %}{% load ui %}
 {% block title %}Log in · Optimum{% endblock %}
 {% block content %}
-<h1>Log in</h1>
-{% if error %}<div class="msg error">{{ error }}</div>{% endif %}
+<div class="ring">{% icon 'user' 20 %}</div>
+<h1>Welcome back</h1><p class="sub">Log in to manage inventory and sales.</p>
+{% if error %}<div class="err" style="text-align:center;margin-bottom:8px">{{ error }}</div>{% endif %}
 <form method="post">{% csrf_token %}
-<label for="u">Username</label><input id="u" name="username" autofocus required>
-<label for="p">Password</label><input id="p" type="password" name="password" required>
-<p><button class="btn" style="width:100%">Log in</button></p>
+<label for="u">Username</label><input id="u" name="username" placeholder="Enter your username" autofocus required>
+<label for="p">Password</label><input id="p" type="password" name="password" placeholder="Enter your password" required>
+<label class="remember"><input type="checkbox" name="remember" value="1"> Remember me</label>
+<p><button class="btn" style="width:100%;justify-content:center;margin-top:14px">Log in</button></p>
 </form>
-<p class="muted" style="text-align:center">No account? <a href="{% url 'accounts:register' %}">Register Staff Account</a></p>
+<div class="foot">New to Optimum? <a href="{% url 'accounts:register' %}"><b>Create an account</b></a></div>
 {% endblock %}

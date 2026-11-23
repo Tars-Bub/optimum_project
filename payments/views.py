@@ -1,9 +1,11 @@
 import json
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -12,7 +14,7 @@ from sales.models import Order
 
 from . import maya
 from .models import MayaPayment
-from .services import PaymentError, public_base, start_checkout, sync_payment
+from .services import PaymentError, complete_demo_payment, public_base, start_checkout, sync_payment
 
 LABELS = {'pending': 'Waiting for payment', 'paid': 'Paid', 'failed': 'Payment failed',
           'expired': 'Checkout expired', 'cancelled': 'Cancelled'}
@@ -28,8 +30,28 @@ def _qr_svg(url):
 
 @login_required
 def index(request):
-    payments = MayaPayment.objects.select_related('order')[:200]
-    return render(request, 'payments/index.html', {'payments': payments})
+    payments = MayaPayment.objects.select_related('order')
+    unpaid = [o for o in Order.objects.filter(status=Order.FINAL).prefetch_related('items')
+              .order_by('-finalized_at')[:100] if o.balance > 0][:15]
+    stats = {s: payments.filter(status=s).count() for s in ('pending', 'paid', 'failed')}
+    stats['unpaid'] = len(unpaid)
+    return render(request, 'payments/index.html', {'payments': payments[:200], 'unpaid': unpaid, 'stats': stats})
+
+
+@login_required
+@require_POST
+def sms_link(request, pk):
+    from notifications.services import send_payment_link
+    payment = get_object_or_404(MayaPayment.objects.select_related('order'), pk=pk)
+    if payment.status != MayaPayment.PENDING or not payment.checkout_url:
+        messages.error(request, 'This checkout is no longer open, so there is no link to send.')
+        return redirect('payments:maya_detail', pk=payment.pk)
+    row = send_payment_link(payment, request.POST.get('number', ''), request.user)
+    if row.status == 'sent':
+        messages.success(request, f'Payment link sent by SMS to {row.recipient}.')
+    else:
+        messages.error(request, f'SMS not sent: {row.detail}')
+    return redirect('payments:maya_detail', pk=payment.pk)
 
 
 @login_required
@@ -97,6 +119,20 @@ def maya_return(request, reference):
     waiting = not payment.is_final and result != 'cancel'
     return render(request, 'payments/result.html', {
         'payment': payment, 'result': result, 'waiting': waiting, 'unverified': unverified})
+
+
+def demo_pay(request, reference):
+    """DEMO_PAYMENTS only: stands in for the Maya checkout page when Maya cannot be reached.
+    Public on purpose (the customer's phone is not logged in); the reference is unguessable."""
+    payment = get_object_or_404(MayaPayment.objects.select_related('order'), reference=reference)
+    if not settings.DEMO_PAYMENTS or not payment.is_demo:
+        raise Http404
+    if request.method == 'POST' and not payment.is_final:
+        success = request.POST.get('action') == 'pay'
+        payment = complete_demo_payment(payment, success=success)
+        return redirect(reverse('payments:maya_return', args=[payment.reference])
+                        + ('?result=success' if success else '?result=cancel'))
+    return render(request, 'payments/demo.html', {'payment': payment})
 
 
 @csrf_exempt

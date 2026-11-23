@@ -1,7 +1,10 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')   # must run before any os.environ read below
 
 
 def env_bool(name, default):
@@ -38,6 +41,8 @@ INSTALLED_APPS = [
     'documents',
     'reports',
     'payments',
+    'data',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -116,6 +121,9 @@ MAYA_BASE_URL = os.environ.get('MAYA_BASE_URL', 'https://pg-sandbox.paymaya.com'
 MAYA_TIMEOUT = int(os.environ.get('MAYA_TIMEOUT', '15'))
 # Public address of this site (no trailing slash). Maya sends customers back here and calls the webhook here.
 SITE_URL = os.environ.get('SITE_URL', '').strip().rstrip('/')
+# DEMO_PAYMENTS=1: when Maya cannot be reached (e.g. its sandbox is down), create a simulated
+# checkout page instead of failing, so the payment flow can still be shown. Leave it off for real use.
+DEMO_PAYMENTS = env_bool('DEMO_PAYMENTS', False)
 
 # Turn on behind HTTPS in production (cloud host): DJANGO_SECURE=1
 if env_bool('DJANGO_SECURE', bool(RENDER_HOST)):
@@ -123,3 +131,10 @@ if env_bool('DJANGO_SECURE', bool(RENDER_HOST)):
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# SMS through PhilSMS (https://app.philsms.com/developers/documentation).
+PHILSMS_API_TOKEN = os.environ.get('PHILSMS_API_TOKEN', '').strip()
+PHILSMS_SENDER_ID = os.environ.get('PHILSMS_SENDER_ID', 'PhilSMS').strip()
+PHILSMS_BASE_URL = os.environ.get('PHILSMS_BASE_URL', 'https://app.philsms.com/api/v3').strip().rstrip('/')
+SMS_OWNER_NUMBER = os.environ.get('SMS_OWNER_NUMBER', '').strip()       # gets low-stock alerts
+SMS_ENABLED = env_bool('SMS_ENABLED', True)

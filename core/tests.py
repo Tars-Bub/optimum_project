@@ -137,7 +137,7 @@ class SmokeTests(Base):
                 f'/catalog/products/{self.p1.pk}/edit/', '/stock/', '/stock/?tab=incoming',
                 '/stock/?tab=adjust', '/stock/?tab=movements', '/stock/?tab=alerts', '/sales/',
                 '/sales/?tab=drafts', '/sales/returns/', f'/sales/returns/?tab=return&order={order.pk}',
-                f'/sales/returns/?tab=void&order={order.pk}', '/sales/returns/?q=SO-1',
+                f'/sales/returns/?tab=void&order={order.pk}', '/sales/returns/?q=SL-1',
                 '/documents/', f'/documents/?tab=invoice&order={order.pk}',
                 f'/documents/?tab=delivery&order={order.pk}', '/documents/?tab=reprint',
                 f'/documents/{Document.objects.get().pk}/view/', '/reports/', '/reports/?tab=sales',

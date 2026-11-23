@@ -1,23 +1,24 @@
 {% extends 'base.html' %}{% load ui %}
 {% block title %}Maya checkout · Optimum{% endblock %}
 {% block content %}
-<h1>Maya checkout · {{ payment.order.number }}</h1>
+{% include 'partials/head.html' with eyebrow='Maya Payments' title='Maya checkout' sub=payment.order.number %}
 <div class="row">
-<div class="card grow">
-<h2>Amount {{ payment.amount|peso }}</h2>
-<p>Status: <span class="badge {{ payment.status }}" id="maya-status" data-url="{% url 'payments:maya_status' payment.pk %}" data-final="{% if payment.is_final %}1{% else %}0{% endif %}">{{ label }}</span>
-{% if payment.maya_status %}<span class="muted"> (Maya: {{ payment.maya_status }})</span>{% endif %}</p>
-{% if payment.note %}<div class="msg warning">{{ payment.note }}</div>{% endif %}
+<div class="card grow"><div class="card-head"><div><h2>Amount {{ payment.amount|peso }}</h2><p>Reference {{ payment.reference }}</p></div>
+<span class="badge {{ payment.status }}" id="maya-status" data-url="{% url 'payments:maya_status' payment.pk %}" data-final="{% if payment.is_final %}1{% else %}0{% endif %}">{{ label }}</span></div>
+<div class="form-body" style="padding-top:0">
+{% if payment.maya_status %}<p class="muted" style="margin-top:0">Maya status: {{ payment.maya_status }}</p>{% endif %}
+{% if payment.note %}<div class="notice" style="margin:0 0 14px"><span>{% icon 'alert' 16 %}</span><div>{{ payment.note }}</div></div>{% endif %}
 {% if payment.status == 'pending' %}
-<p>Let the customer scan the QR code, or open the checkout on this device.</p>
-<div class="actions"><a class="btn" href="{{ payment.checkout_url }}" target="_blank" rel="noopener">Open Maya checkout</a>
+<p>Let the customer scan the QR code, open the checkout on this device, or send the link by SMS.{% if payment.is_demo %} <b>Demo mode:</b> this is a simulated checkout page, not the real Maya.{% endif %}</p>
+<div class="chips" style="margin-bottom:14px"><a class="btn" href="{{ payment.checkout_url }}" target="_blank" rel="noopener">{% if payment.is_demo %}Open demo checkout{% else %}Open Maya checkout{% endif %}</a>
 <form class="inline" method="post" action="{% url 'payments:maya_check' payment.pk %}">{% csrf_token %}<button class="btn btn-outline">Check status now</button></form></div>
 <label>Checkout link</label><input readonly value="{{ payment.checkout_url }}" onclick="this.select()">
-{% elif payment.status == 'paid' %}<p>Payment confirmed by Maya on {{ payment.paid_at|date:"M d, Y H:i" }}. {{ payment.order.number }} is now {{ payment.order.payment_status }}.</p>
+<form method="post" action="{% url 'payments:maya_sms' payment.pk %}">{% csrf_token %}<label>Send the link by SMS</label>
+<div class="chips" style="flex-wrap:nowrap"><input name="number" value="{{ payment.order.client_phone }}" placeholder="09171234567" required><button class="btn" style="white-space:nowrap">{% icon 'message' 15 %} Send SMS</button></div></form>
+{% elif payment.status == 'paid' %}<p>Payment confirmed{% if payment.is_demo %} (demo){% else %} by Maya{% endif %} on {{ payment.paid_at|date:"M d, Y g:i A" }}. {{ payment.order.number }} is now {{ payment.order.payment_status }}.</p>
 {% else %}<p>This checkout is closed. <a href="{% url 'payments:maya_pay' payment.order_id %}">Create a new checkout</a> if the customer still needs to pay.</p>{% endif %}
-<p class="muted">Reference {{ payment.reference }}</p>
-</div>
-{% if payment.status == 'pending' and qr_svg %}<div class="card" style="width:280px;text-align:center"><h2>Scan to pay</h2><div class="qr">{{ qr_svg }}</div></div>{% endif %}
+</div></div>
+{% if payment.status == 'pending' and qr_svg %}<div class="card" style="width:280px;text-align:center"><div class="card-head"><h2>Scan to pay</h2></div><div class="qr" style="padding-bottom:16px">{{ qr_svg }}</div></div>{% endif %}
 </div>
 <style>.qr svg{width:220px;height:220px}</style>
 <script>
