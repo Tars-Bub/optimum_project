@@ -1,10 +1,11 @@
 {% load static ui %}<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#2c3947">
 <title>{% block title %}Optimum{% endblock %}</title>
 <link rel="icon" type="image/svg+xml" href="{% static 'img/logo.svg' %}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ asset_v }}"></head>
+<link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ asset_v }}">
+<link rel="stylesheet" href="{% static 'css/mobile.css' %}?v={{ asset_v }}"><!-- mobile --></head>
 <body><div class="app">
 <aside class="sidebar">
 <a class="logo" href="{% url 'core:dashboard' %}"><img class="mark" src="{% static 'img/logo.svg' %}" alt="Optimum logo" width="36" height="36"><span><b>Optimum</b><small>BUSINESS PRODUCTS</small></span></a>
@@ -35,4 +36,5 @@ setTimeout(function(){document.querySelectorAll('.messages .msg.success').forEac
 document.addEventListener('click',function(e){document.querySelectorAll('details.usermenu[open]').forEach(function(d){if(!d.contains(e.target))d.removeAttribute('open');});});
 </script>
 {% block scripts %}{% endblock %}
+<script src="{% static 'js/mobile.js' %}?v={{ asset_v }}" defer></script><!-- mobile -->
 </body></html>
