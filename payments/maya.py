@@ -8,6 +8,7 @@ The keys come from environment variables (see config/settings.py), never from th
 """
 import base64
 import logging
+import time
 from decimal import Decimal, InvalidOperation
 
 import requests
@@ -43,12 +44,19 @@ def _request(method, path, key, json=None):
     if not key:
         raise MayaError('Maya is not configured: set MAYA_PUBLIC_KEY and MAYA_SECRET_KEY.')
     url = settings.MAYA_BASE_URL.rstrip('/') + path
-    try:
-        resp = requests.request(method, url, headers=_auth_header(key), json=json,
-                                timeout=settings.MAYA_TIMEOUT)
-    except requests.RequestException as exc:
-        log.warning('Maya %s %s failed: %s', method, path, exc.__class__.__name__)
-        raise MayaError('Could not reach Maya. Please try again.') from exc
+    resp = None
+    for attempt in range(3):          # Maya's sandbox sometimes answers 502/503: try again briefly
+        try:
+            resp = requests.request(method, url, headers=_auth_header(key), json=json,
+                                    timeout=settings.MAYA_TIMEOUT)
+        except requests.RequestException as exc:
+            log.warning('Maya %s %s failed: %s', method, path, exc.__class__.__name__)
+            if attempt == 2:
+                raise MayaError('Could not reach Maya. Please try again.') from exc
+        else:
+            if resp.status_code not in (502, 503, 504) or attempt == 2:
+                break
+        time.sleep(1.5 * (attempt + 1))
     try:
         data = resp.json() if resp.content else {}
     except ValueError:
@@ -58,6 +66,8 @@ def _request(method, path, key, json=None):
         if isinstance(data, dict):
             detail = data.get('message') or data.get('error') or data.get('code') or ''
         log.warning('Maya %s %s returned %s', method, path, resp.status_code)
+        if resp.status_code in (502, 503, 504):
+            detail = detail or 'Maya is temporarily unavailable. Please try again in a minute.'
         raise MayaError(f'Maya rejected the request ({resp.status_code}). {detail}'.strip(),
                         resp.status_code, data)
     return data

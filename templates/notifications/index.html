@@ -1,0 +1,22 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}SMS Messages · Optimum{% endblock %}
+{% block content %}
+{% include 'partials/head.html' with eyebrow='Notifications' title='SMS Messages' sub='Receipts, payment links and low-stock alerts sent through PhilSMS.' %}
+<div class="cards">
+<div class="card stat"><span class="tile-ic">{% icon 'check' 20 %}</span><div><small>Sent</small><strong>{{ counts.sent }}</strong><em>Accepted by PhilSMS</em></div></div>
+<div class="card stat"><span class="tile-ic">{% icon 'alert' 20 %}</span><div><small>Failed</small><strong>{{ counts.failed }}</strong><em>Provider or network problem</em></div></div>
+<div class="card stat"><span class="tile-ic">{% icon 'message' 20 %}</span><div><small>Not sent</small><strong>{{ counts.skipped }}</strong><em>No valid number or not configured</em></div></div></div>
+{% if not configured %}<div class="notice" style="margin:0 0 16px"><span>{% icon 'alert' 16 %}</span><div><b>SMS is not configured</b>Add <code>PHILSMS_API_TOKEN</code> to the .env file (or the Render environment) to start sending. Messages are recorded below as "Not sent" until then.</div></div>{% endif %}
+<div class="row"><div class="card grow"><div class="card-head"><div><h2>Message log</h2><p>The latest 200 messages the system tried to send.</p></div></div>
+<div class="card-bar"><div class="chips"><a class="chipbtn {% if not kind %}active{% endif %}" href="?">All</a>{% for key, label in kinds %}<a class="chipbtn {% if kind == key %}active{% endif %}" href="?kind={{ key }}">{{ label }}</a>{% endfor %}</div></div>
+<table><tr><th>When</th><th>To</th><th>Type</th><th>Message</th><th>Status</th><th></th></tr>
+{% for l in logs %}<tr><td class="muted">{{ l.created_at|date:"M d, g:i A" }}</td><td>{{ l.recipient }}</td><td><span class="badge plain">{{ l.get_kind_display }}</span></td><td style="max-width:340px"><div style="font-size:12.5px">{{ l.message }}</div>{% if l.detail %}<small class="muted">{{ l.detail }}</small>{% endif %}</td>
+<td><span class="badge {% if l.status == 'sent' %}ok{% elif l.status == 'failed' %}bad{% else %}warn{% endif %}">{{ l.get_status_display }}</span></td>
+<td class="actcell">{% if l.status != 'sent' and l.recipient %}<form method="post" action="{% url 'notifications:resend' l.pk %}">{% csrf_token %}<button class="btn btn-outline btn-sm">Try again</button></form>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="6"><div class="empty"><span class="tile-ic">{% icon 'message' 20 %}</span><b>No messages yet</b>Add a customer's mobile number on a sale to send a receipt.</div></td></tr>{% endfor %}</table></div>
+<div class="card" style="width:340px;flex-shrink:0"><div class="card-head"><div><h2>Send a message</h2><p>Owner only. Useful to test the connection.</p></div></div>
+{% if is_admin %}<form method="post" action="{% url 'notifications:send' %}">{% csrf_token %}<div class="form-body" style="padding-top:0"><label>Mobile number</label><input name="number" placeholder="09171234567" required>
+<label>Message</label><textarea name="message" maxlength="300" required placeholder="Type a short message"></textarea></div><div class="card-foot"><button class="btn">{% icon 'message' 15 %} Send SMS</button></div></form>
+<div class="help" style="padding:0 18px 14px">Low-stock alerts go to {% if owner_number %}{{ owner_number }}{% else %}nobody yet: set SMS_OWNER_NUMBER{% endif %}.</div>
+{% else %}<div class="empty">Only the Admin / Owner can send manual messages.</div>{% endif %}</div></div>
+{% endblock %}

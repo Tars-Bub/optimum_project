@@ -24,6 +24,8 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user:
             login(request, user)
+            if not request.POST.get('remember'):
+                request.session.set_expiry(0)   # ends when the browser closes
             audit(user, 'Logged in')
             nxt = request.GET.get('next', '')
             if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):

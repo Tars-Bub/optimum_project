@@ -1,21 +1,18 @@
 {% extends 'base.html' %}{% load ui %}
 {% block title %}Pay with Maya · Optimum{% endblock %}
 {% block content %}
-<h1>Pay with Maya</h1>
-<div class="card" style="max-width:560px">
-<h2>{{ order.number }} · {{ order.client_label }}</h2>
+{% include 'partials/head.html' with eyebrow='Maya Payments' title='Pay with Maya' sub='Confirm the amount, then create the checkout for the customer.' %}
+<div class="card" style="max-width:640px"><div class="card-head"><div><h2>{{ order.number }} · {{ order.client_label }}</h2><p>Review the sale before creating the checkout.</p></div></div>
 <table><tr><th>Item</th><th class="num">Qty</th><th class="num">Line total</th></tr>
 {% for it in order.items.all %}<tr><td>{{ it.product.name }}</td><td class="num">{{ it.quantity }}</td><td class="num">{{ it.line_total|peso }}</td></tr>{% endfor %}
-<tr><th>Total</th><th></th><th class="num">{{ order.total|peso }}</th></tr>
-<tr><td>Already paid</td><td></td><td class="num">{{ order.amount_paid|peso }}</td></tr>
-<tr><th>To pay now</th><th></th><th class="num">{{ order.balance|peso }}</th></tr></table>
+<tr><td><b>Total</b></td><td></td><td class="num"><b>{{ order.total|peso }}</b></td></tr>
+<tr><td class="muted">Already paid</td><td></td><td class="num">{{ order.amount_paid|peso }}</td></tr>
+<tr><td><b>To pay now</b></td><td></td><td class="num"><b style="font-size:17px">{{ order.balance|peso }}</b></td></tr></table>
 {% if can_pay %}
-<form method="post" style="margin-top:14px">{% csrf_token %}<button class="btn">Create Maya checkout for {{ order.balance|peso }}</button>
-<a class="btn btn-outline" href="{% url 'reports:index' %}">Cancel</a></form>
-<p class="help">You will get a link and a QR code for the customer. The sale is marked paid only after Maya confirms the payment.</p>
-{% else %}<p class="muted" style="margin-top:14px">{% if order.status != 'finalized' %}Only finalized sales can be paid with Maya.{% else %}This sale is already fully paid.{% endif %}</p>{% endif %}
-</div>
-{% if attempts %}<div class="card" style="max-width:560px"><h2>Earlier Maya attempts</h2>
-<table><tr><th>When</th><th class="num">Amount</th><th>Status</th><th></th></tr>
-{% for p in attempts %}<tr><td>{{ p.created_at|date:"M d, H:i" }}</td><td class="num">{{ p.amount|peso }}</td><td><span class="badge {{ p.status }}">{{ p.get_status_display }}</span></td><td><a href="{% url 'payments:maya_detail' p.pk %}">Open</a></td></tr>{% endfor %}</table></div>{% endif %}
+<form method="post" class="card-foot" style="justify-content:space-between;align-items:center">{% csrf_token %}<span class="muted" style="font-size:12px">You will get a link and a QR code for the customer. The sale is marked paid only after Maya confirms.</span>
+<span class="chips"><a class="btn btn-outline" href="{% url 'payments:index' %}">Cancel</a><button class="btn">{% icon 'card' 15 %} Create Maya checkout for {{ order.balance|peso }}</button></span></form>
+{% else %}<div class="card-foot"><span class="muted">{% if order.status != 'finalized' %}Only finalized sales can be paid with Maya.{% else %}This sale is already fully paid.{% endif %}</span></div>{% endif %}</div>
+{% if attempts %}<div class="card" style="max-width:640px"><div class="card-head"><h2>Earlier Maya attempts</h2></div>
+<table><tr><th>When</th><th class="num">Amount</th><th>Status</th><th>Note</th><th></th></tr>
+{% for p in attempts %}<tr><td class="muted">{{ p.created_at|date:"M d, g:i A" }}</td><td class="num">{{ p.amount|peso }}</td><td><span class="badge {{ p.status }}">{{ p.get_status_display }}</span></td><td class="muted" style="font-size:12px">{{ p.note|default:"-" }}</td><td class="actcell"><a class="btn btn-outline btn-sm" href="{% url 'payments:maya_detail' p.pk %}">Open</a></td></tr>{% endfor %}</table></div>{% endif %}
 {% endblock %}

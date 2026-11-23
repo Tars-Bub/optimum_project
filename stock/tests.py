@@ -10,6 +10,6 @@ class StockProductInputTests(TestCase):
         r=cl.post('/stock/',{'form':'incoming','product':'pap-1','quantity':5}); self.assertEqual(r.status_code,302)
         r=cl.post('/stock/',{'form':'incoming','product':'PAP-1 \u2014 Paper','quantity':5}); self.assertEqual(r.status_code,302)
         p.refresh_from_db(); self.assertEqual(p.quantity,10)
-        r=cl.post('/stock/',{'form':'adjust','product':'Paper','counted':3,'reason':'count'}); self.assertEqual(r.status_code,302)
+        r=cl.post('/stock/',{'form':'adjust','product':'Paper','counted':3,'reason':'Cycle count'}); self.assertEqual(r.status_code,302)
         p.refresh_from_db(); self.assertEqual(p.quantity,3)
         r=cl.post('/stock/',{'form':'incoming','product':'zzz','quantity':5}); self.assertContains(r,'No active item')

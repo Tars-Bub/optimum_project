@@ -24,3 +24,9 @@ services:
         value: https://pg-sandbox.paymaya.com
       - key: SITE_URL
         sync: false
+      - key: PHILSMS_API_TOKEN
+        sync: false
+      - key: PHILSMS_SENDER_ID
+        value: PhilSMS
+      - key: SMS_OWNER_NUMBER
+        sync: false
