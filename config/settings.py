@@ -121,6 +121,9 @@ MAYA_BASE_URL = os.environ.get('MAYA_BASE_URL', 'https://pg-sandbox.paymaya.com'
 MAYA_TIMEOUT = int(os.environ.get('MAYA_TIMEOUT', '15'))
 # Public address of this site (no trailing slash). Maya sends customers back here and calls the webhook here.
 SITE_URL = os.environ.get('SITE_URL', '').strip().rstrip('/')
+# DEMO_PAYMENTS=1: when Maya cannot be reached (e.g. its sandbox is down), create a simulated
+# checkout page instead of failing, so the payment flow can still be shown. Leave it off for real use.
+DEMO_PAYMENTS = env_bool('DEMO_PAYMENTS', False)
 
 # Turn on behind HTTPS in production (cloud host): DJANGO_SECURE=1
 if env_bool('DJANGO_SECURE', bool(RENDER_HOST)):

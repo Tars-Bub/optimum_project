@@ -1,0 +1,14 @@
+{% extends 'auth_base.html' %}{% load ui %}
+{% block title %}Demo checkout · Optimum{% endblock %}
+{% block content %}
+<h1>Demo checkout</h1>
+<div class="notice" style="margin:0 0 14px"><span>{% icon 'alert' 16 %}</span><div><b>Demo mode.</b> This page stands in for Maya Checkout while Maya cannot be reached. Nothing is charged.</div></div>
+<p style="text-align:center">{{ payment.order.number }} · <b>{{ payment.amount|peso }}</b></p>
+{% if payment.is_final %}<p class="muted" style="text-align:center">This checkout is already closed ({{ payment.get_status_display }}).</p>
+<p style="text-align:center"><a class="btn" href="{% url 'payments:maya_return' payment.reference %}">See result</a></p>
+{% else %}
+<form method="post" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding-bottom:16px">{% csrf_token %}
+<button class="btn" name="action" value="pay">Simulate successful payment</button>
+<button class="btn btn-outline" name="action" value="cancel">Cancel</button></form>
+{% endif %}
+{% endblock %}

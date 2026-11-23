@@ -13,6 +13,7 @@ from . import maya
 from .models import MayaPayment
 
 REUSE_WINDOW = timedelta(minutes=30)
+DEMO_PREFIX = 'demo-'
 
 
 class PaymentError(ValueError):
@@ -58,6 +59,8 @@ def start_checkout(order, user, base_url):
              'cancel': f'{back}?result=cancel'},
             metadata={'order': order.number})
     except maya.MayaError as exc:
+        if settings.DEMO_PAYMENTS:
+            return _demo_checkout(order, amount, user, reference, base_url, exc)
         # keep a record so the Maya Payments list shows the attempt that did not go through
         MayaPayment.objects.create(order=order, reference=reference, amount=amount, created_by=user,
                                    status=MayaPayment.FAILED, maya_status='NOT_CREATED', note=str(exc)[:200])
@@ -71,13 +74,48 @@ def start_checkout(order, user, base_url):
     return payment
 
 
+def _demo_checkout(order, amount, user, reference, base_url, exc):
+    """DEMO_PAYMENTS only: Maya failed, so open a simulated checkout page on this site instead."""
+    payment = MayaPayment.objects.create(
+        order=order, reference=reference, checkout_id=DEMO_PREFIX + uuid.uuid4().hex[:16],
+        checkout_url=base_url + reverse('payments:demo_pay', args=[reference]), amount=amount,
+        created_by=user, maya_status='DEMO_PENDING',
+        note='DEMO MODE: simulated checkout, Maya could not be reached. Nothing is charged.')
+    audit(user, 'Maya demo checkout created', f'{order.number} {amount} {reference} ({str(exc)[:80]})')
+    return payment
+
+
+def complete_demo_payment(payment, success=True):
+    """Finish a simulated checkout: mark it paid (and add to the order) or cancel it."""
+    if not payment.is_demo:
+        raise PaymentError('Only demo checkouts can be simulated.')
+    with transaction.atomic():
+        locked = MayaPayment.objects.select_for_update().get(pk=payment.pk)
+        if locked.is_final:
+            return locked
+        if success:
+            order = Order.objects.select_for_update().get(pk=locked.order_id)
+            order.amount_paid = min(order.amount_paid + locked.amount, order.total)
+            order.save(update_fields=['amount_paid'])
+            locked.status = MayaPayment.PAID
+            locked.maya_status = 'DEMO_SUCCESS'
+            locked.paid_at = timezone.now()
+            locked.note = 'DEMO MODE: payment simulated. Nothing was charged by Maya.'
+            audit(None, 'Maya demo payment simulated', f'{order.number} {locked.amount} {locked.reference}')
+        else:
+            locked.status = MayaPayment.CANCELLED
+            locked.maya_status = 'DEMO_CANCELLED'
+        locked.save()
+        return locked
+
+
 def sync_payment(payment):
     """Ask Maya for the real status of a payment and apply it. Safe to call any number of times.
 
     The browser redirect and the webhook only tell us *when* to look; the status itself always
     comes from Maya's API (called with the secret key), so a forged request cannot mark an order paid.
     """
-    if payment.is_final:
+    if payment.is_final or payment.is_demo:     # a demo checkout has nothing to look up at Maya
         return payment
     try:
         data = (maya.get_payment(payment.checkout_id) if payment.checkout_id

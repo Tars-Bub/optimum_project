@@ -31,3 +31,8 @@ class MayaPayment(models.Model):
     @property
     def is_final(self):
         return self.status != self.PENDING
+
+    @property
+    def is_demo(self):
+        """True for a simulated checkout made while DEMO_PAYMENTS was on (never charged by Maya)."""
+        return self.checkout_id.startswith('demo-')
