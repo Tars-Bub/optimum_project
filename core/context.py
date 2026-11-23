@@ -5,9 +5,12 @@ from django.urls import NoReverseMatch, reverse
 
 
 def _asset_version():
-    """Changes whenever app.css changes, so browsers never keep showing an old stylesheet."""
+    """Changes whenever app.css / mobile.css / mobile.js change, so browsers never keep showing an old stylesheet."""
     try:
-        return int((settings.BASE_DIR / 'static' / 'css' / 'app.css').stat().st_mtime)
+        css = settings.BASE_DIR / 'static'
+        return int(max((css / 'css' / 'app.css').stat().st_mtime,
+                       (css / 'css' / 'mobile.css').stat().st_mtime,
+                       (css / 'js' / 'mobile.js').stat().st_mtime))
     except OSError:
         return 0
 
