@@ -1,0 +1,135 @@
+/* Optimum - mobile / tablet layer.
+   Loaded AFTER app.css. Nothing in app.css is changed; remove the <link> and
+   <script> lines marked "mobile" in base.html to go back to the original look.
+   Everything here is screen-only so printing is unaffected. */
+
+/* Elements created by mobile.js are hidden on desktop */
+.menu-btn,.nav-backdrop,.cart-fab{display:none}
+
+@media screen and (max-width:900px){
+
+  /* ---------- Navigation: sidebar becomes a slide-in drawer ---------- */
+  .app .sidebar{
+    display:block;position:fixed;top:0;left:0;bottom:0;z-index:60;
+    width:260px;max-width:82vw;overflow-y:auto;
+    transform:translateX(-100%);visibility:hidden;
+    transition:transform .22s ease,visibility 0s linear .22s;
+    box-shadow:none;
+  }
+  body.nav-open .sidebar{transform:none;visibility:visible;transition:transform .22s ease;box-shadow:4px 0 24px rgba(0,0,0,.35)}
+  body.nav-open{overflow:hidden}
+  .nav-backdrop{display:block;position:fixed;inset:0;z-index:55;background:rgba(20,30,40,.5);opacity:0;pointer-events:none;transition:opacity .2s}
+  body.nav-open .nav-backdrop{opacity:1;pointer-events:auto}
+  .sidebar nav a{padding:13px 12px}
+
+  .menu-btn{
+    display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+    width:42px;height:42px;padding:0;border:1px solid var(--line);border-radius:10px;
+    background:#fff;color:var(--text);cursor:pointer;
+  }
+  .menu-btn svg{width:22px;height:22px}
+
+  /* ---------- Top bar ---------- */
+  .topbar{position:sticky;top:0;z-index:40;gap:10px;padding:8px 14px}
+  .search{min-width:0}
+  .user{gap:8px}
+
+  /* Stacked layouts: let each block take the full width and never push the page wider */
+  .row{align-items:stretch}
+  .row>*{min-width:0}
+
+  /* ---------- Page spacing ---------- */
+  .content{padding:14px}
+  h1{font-size:21px;margin-bottom:12px}
+  .card{padding:14px;overflow-x:auto}
+
+  /* Cards with a fixed width written inline in the templates */
+  .card[style*="width"]{width:100%!important;max-width:100%!important}
+  div[style*="justify-content:space-between"]{flex-wrap:wrap;gap:8px}
+
+  /* ---------- Tabs: one swipeable row ---------- */
+  .tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-left:-14px;margin-right:-14px;padding:0 14px 2px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex-shrink:0;white-space:nowrap;padding:10px 14px}
+
+  /* ---------- Touch-friendly controls ---------- */
+  input,select,textarea{font-size:16px;padding:10px 12px}   /* 16px stops iOS zooming in */
+  .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  .btn-sm{min-height:38px;padding:6px 12px}
+  .link{padding:8px 6px}
+  .actions .btn{flex:1 1 auto}
+  .filters input,.filters select{width:100%!important;min-width:0!important;flex:1 1 100%}
+  .filters .btn{flex:1 1 auto}
+  .qty{gap:8px}
+  .qty button{width:38px;height:38px;font-size:18px}
+
+  /* ---------- Grids ---------- */
+  .tiles{grid-template-columns:repeat(3,1fr)}
+  .tile{height:auto;min-height:92px}
+  .stat strong{font-size:22px}
+
+  /* ---------- Sales: cart shortcut button ---------- */
+  .cart .line{flex-wrap:wrap}
+  .cart .actions .btn{flex:1 1 100%}
+  .cart-fab{
+    display:inline-flex;align-items:center;gap:8px;position:fixed;z-index:30;
+    right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));
+    padding:12px 18px;border-radius:99px;background:var(--accent-d);color:#fff;
+    font-weight:600;font-size:15px;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.3);
+  }
+  .cart-fab.hide{display:none}
+
+  /* ---------- Charts scroll sideways together inside their card ---------- */
+  .chart div{min-width:46px}
+  .chart div small{font-size:10px}
+
+  /* ---------- Documents preview ---------- */
+  .preform{padding:12px}
+  .slot{overflow-wrap:anywhere}
+}
+
+@media screen and (max-width:640px){
+
+  .user>span{display:none}                 /* keep avatar + Log out only */
+  .cards,.cards.three{grid-template-columns:1fr 1fr}
+  .tiles{grid-template-columns:1fr 1fr}
+  .cart .two{grid-template-columns:1fr}
+
+  /* ---------- Tables become stacked cards (mobile.js adds the labels) ---------- */
+  table.rt,table.rt tbody{display:block;width:100%}
+  table.rt tr{display:block;border:1px solid var(--line);border-radius:10px;background:#fff;padding:4px 12px;margin-bottom:10px}
+  table.rt tr.rt-head{display:none}
+  table.rt td,table.rt th{
+    display:flex;justify-content:space-between;align-items:center;gap:14px;
+    border:0;border-bottom:1px solid var(--line);padding:9px 0;text-align:right;
+  }
+  table.rt tr>*:last-child{border-bottom:0}
+  table.rt td::before,table.rt th::before{
+    content:attr(data-label);flex-shrink:0;max-width:45%;text-align:left;
+    color:var(--muted);font-weight:600;font-size:13px;
+  }
+  table.rt .rt-nolabel::before{content:none}
+  table.rt .rt-nolabel{justify-content:flex-end}
+  table.rt .rt-span{display:block;text-align:left}
+  table.rt .rt-span::before{content:none}
+  table.rt td.num,table.rt th.num{text-align:right}
+  table.rt .cell{display:block;min-width:0;text-align:right;overflow-wrap:anywhere}
+  table.rt .cell .bar{margin-left:auto;width:120px}
+  table.rt .cell form.inline{margin-left:4px}
+  table.rt input[type=number]{width:90px!important}
+  table.rt .cell input:not([type=hidden]){min-width:0}
+  .card{overflow-x:visible}                 /* stacked rows no longer need sideways scroll */
+  .chart-card,.card:has(.chart){overflow-x:auto}
+
+  /* ---------- Sign-in / register pages ---------- */
+  .auth{padding:14px;align-items:start;padding-top:8vh}
+  .auth>div{width:100%;max-width:380px}
+  .auth .card{width:100%}
+  .auth .messages{width:100%!important}
+}
+
+@media screen and (max-width:380px){
+  .content{padding:10px}
+  .topbar{padding:8px 10px}
+  .tiles,.cards,.cards.three{grid-template-columns:1fr}
+}
