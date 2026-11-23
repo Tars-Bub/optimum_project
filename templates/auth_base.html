@@ -1,11 +1,12 @@
 {% load static ui %}<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Optimum{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="{% static 'img/logo.svg' %}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ asset_v }}"></head>
 <body><div class="auth"><div class="auth-box">
-<a class="logo dark" href="/"><span class="mark">O</span><span><b>Optimum</b><small>BUSINESS PRODUCTS</small></span></a>
+<a class="logo dark" href="/"><img class="mark" src="{% static 'img/logo.svg' %}" alt="Optimum logo" width="36" height="36"><span><b>Optimum</b><small>BUSINESS PRODUCTS</small></span></a>
 {% if messages %}<div class="messages static-msgs" style="margin-bottom:12px">{% for m in messages %}<div class="msg {{ m.tags }}"><span class="tile-ic">{% icon 'check' 15 %}</span><div class="body">{{ m }}</div></div>{% endfor %}</div>{% endif %}
 <div class="card">{% block content %}{% endblock %}</div>
 <div class="legal">© 2026 Optimum Business Products</div>

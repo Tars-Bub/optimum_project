@@ -1,12 +1,13 @@
 {% load static ui %}<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Optimum{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="{% static 'img/logo.svg' %}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ asset_v }}"></head>
 <body><div class="app">
 <aside class="sidebar">
-<a class="logo" href="{% url 'core:dashboard' %}"><span class="mark">O</span><span><b>Optimum</b><small>BUSINESS PRODUCTS</small></span></a>
+<a class="logo" href="{% url 'core:dashboard' %}"><img class="mark" src="{% static 'img/logo.svg' %}" alt="Optimum logo" width="36" height="36"><span><b>Optimum</b><small>BUSINESS PRODUCTS</small></span></a>
 <div class="eyebrow-nav">WORKSPACE</div>
 <nav>{% for item in nav_items %}<a href="{{ item.url }}" class="{% if item.active %}active{% endif %}">{% icon item.icon 17 %}<span>{{ item.label }}</span>{% if item.badge %}<span class="count">{{ item.badge }}</span>{% endif %}</a>{% endfor %}
 <div class="nav-sep"></div>
